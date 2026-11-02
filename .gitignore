@@ -15,8 +15,9 @@ configs/storage.local.json
 configs/platforms/*.local.yaml
 models/deploy/platform.local.sh
 .env
-# MiniCPM5 Demo 的本地编译与板端运行路径.
+# MiniCPM5 Demo 的本地编译路径与构建产物.
 demo/MiniCPM5_2B/config.json
+demo/MiniCPM5_2B/build/
 *.log
 logs/
 !models/**/results/full_accuracy/**/*.log

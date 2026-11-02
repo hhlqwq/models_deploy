@@ -574,9 +574,4 @@ std::unique_ptr<Engine> LoadMtkEngine(const fs::path& models, const fs::path& ch
     return std::make_unique<MtkEngine>(models, chat_template, runtime_library);
 }
 
-// 不受调用者工作目录影响,运行配置默认与可执行程序放在一起.
-std::filesystem::path DefaultConfigPath() {
-    return std::filesystem::canonical("/proc/self/exe").parent_path() / "config.json";
-}
-
 }  // 命名空间 minicpm.

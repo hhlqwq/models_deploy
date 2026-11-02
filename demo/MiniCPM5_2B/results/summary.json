@@ -1,21 +1,18 @@
 {
     "date": "2026-11-02",
     "status": "pending_user_validation",
-    "scope": "single_config_json_for_build_and_runtime",
+    "scope": "simple_cmake_build_and_command_line_chat",
     "configuration": {
-        "file": "config.json",
-        "build_section": "build",
-        "runtime_section": "runtime",
-        "environment_path_variables_required": false,
-        "command_line_build_configuration_required": false,
-        "real_paths_git_ignored": true
+        "build_file": "config.json",
+        "runtime": "command_line_arguments",
+        "runtime_config_file_required": false,
+        "environment_path_variables_required": false
     },
     "checks": {
-        "cmake_configuration": "not_run_after_single_config_change",
-        "compilation": "not_run_after_single_config_change",
-        "board_inference": "not_run_after_single_config_change"
+        "compilation": "not_run_by_user_request",
+        "board_inference": "not_run_by_user_request"
     },
-    "reason": "User requested to perform compilation and testing themselves.",
+    "reason": "User will compile and test the simplified demo.",
     "metrics": {
         "accuracy": null,
         "performance": null,

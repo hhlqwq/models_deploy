@@ -1,75 +1,53 @@
-// 独立终端入口,读取文件配置并组装平台引擎.
+// 终端入口,解析运行参数并加载平台引擎.
 #include "core/chat.h"
 #include "platforms/mtk/engine.h"
 
-#include <fstream>
 #include <iostream>
 #include <stdexcept>
 
-#include <nlohmann/json.hpp>
-
 namespace {
 
-// 所有运行参数保存在文件中,命令行只选择配置文件或显示帮助.
+// 展示必要参数和两个可选参数.
 void Usage() {
-    std::cout << "用法: minicpm5_chat [--config <config.json>] [--help]\n"
-                 "默认读取可执行程序同目录的 config.json.\n";
-}
-
-// 模型与模板的相对路径以配置目录为基准,与启动目录无关.
-std::filesystem::path ResourcePath(const nlohmann::json& config, const char* key,
-                                   const std::filesystem::path& directory) {
-    const auto value = config.at(key).get<std::string>();
-    if (value.empty()) throw std::invalid_argument(std::string("配置不能为空: ") + key);
-    const std::filesystem::path path(value);
-    return (path.is_absolute() ? path : directory / path).lexically_normal();
+    std::cout << "用法: minicpm5_chat --models <模型目录> "
+                 "[--chat-template chat_template.jinja] [--max-new-tokens 128]\n"
+                 "/reset 清空历史; /exit 退出.\n";
 }
 
 }  // 匿名命名空间.
 
-// 正常 EOF 与 /exit 均由 RAII 释放双 DLA,配置或运行失败返回非零状态.
+// 模型路径由启动参数指定,不读取环境变量或运行配置文件.
 int main(int argc, char** argv) {
     try {
-        std::filesystem::path config_path;
+        std::filesystem::path models;
+        std::filesystem::path chat_template = "chat_template.jinja";
+        size_t limit = 128;
         for (int index = 1; index < argc; ++index) {
             const std::string option = argv[index];
             if (option == "--help") {
                 Usage();
                 return 0;
             }
-            if (option != "--config") throw std::invalid_argument("未知参数: " + option);
-            if (index + 1 >= argc) throw std::invalid_argument("--config 缺少文件路径.");
-            config_path = argv[++index];
+            if (index + 1 >= argc) throw std::invalid_argument("参数缺少值: " + option);
+            const std::string value = argv[++index];
+            if (option == "--models") models = value;
+            else if (option == "--chat-template") chat_template = value;
+            else if (option == "--max-new-tokens") {
+                if (value.empty() || value.find_first_not_of("0123456789") != std::string::npos) {
+                    throw std::invalid_argument("生成上限必须是 1 至 1023 的整数.");
+                }
+                const auto count = std::stoull(value);
+                if (count == 0 || count >= 1024) {
+                    throw std::invalid_argument("生成上限必须是 1 至 1023 的整数.");
+                }
+                limit = static_cast<size_t>(count);
+            } else throw std::invalid_argument("未知参数: " + option);
         }
-        if (config_path.empty()) config_path = minicpm::DefaultConfigPath();
-        config_path = std::filesystem::absolute(config_path).lexically_normal();
-        std::ifstream input(config_path);
-        if (!input) {
-            throw std::runtime_error("无法读取配置: " + config_path.string() +
-                                     "; 请参照 config.example.json 创建 config.json.");
+        if (models.empty() || chat_template.empty()) {
+            Usage();
+            throw std::invalid_argument("必须指定模型目录,聊天模板路径不能为空.");
         }
-        const auto config = nlohmann::json::parse(input);
-        if (!config.is_object()) throw std::invalid_argument("配置必须是 JSON 对象.");
-        const auto& runtime = config.at("runtime");
-        if (!runtime.is_object()) throw std::invalid_argument("runtime 配置必须是 JSON 对象.");
-        const auto& budget = runtime.at("max_new_tokens");
-        if (!budget.is_number_unsigned() || budget.get<uint64_t>() == 0 ||
-            budget.get<uint64_t>() >= 1024) {
-            throw std::invalid_argument("max_new_tokens 必须是 1 至 1023 的整数.");
-        }
-        const size_t limit = budget.get<size_t>();
-        const auto directory = config_path.parent_path();
-        const auto models = ResourcePath(runtime, "models", directory);
-        const auto chat_template = ResourcePath(runtime, "chat_template", directory);
-        std::string library = runtime.value("runtime_library",
-                                          "libneuronusdk_runtime.mtk.so.8");
-        if (library.empty()) throw std::invalid_argument("runtime_library 不能为空.");
-        const std::filesystem::path library_path(library);
-        if (library_path.has_parent_path() && !library_path.is_absolute()) {
-            library = (directory / library_path).lexically_normal().string();
-        }
-        std::cout << "[配置] " << config_path.string() << '\n' << std::flush;
-        auto engine = minicpm::LoadMtkEngine(models, chat_template, library);
+        auto engine = minicpm::LoadMtkEngine(models, chat_template);
         minicpm::Chat(*engine, limit, std::cin, std::cout);
         return 0;
     } catch (const std::exception& error) {

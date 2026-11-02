@@ -1,16 +1,6 @@
 {
-    "build": {
-        "platform": "genio_720",
-        "type": "Release",
-        "cxx": "/path/to/aarch64-linux-gnu-g++",
-        "sysroot": "/path/to/target-sysroot",
-        "sdk_include": "/path/to/sdk/include",
-        "dependencies": "/path/to/G720/tools/cpp_llm/prepared"
-    },
-    "runtime": {
-        "models": "/path/to/minicpm5_2b/models",
-        "chat_template": "chat_template.jinja",
-        "max_new_tokens": 128,
-        "runtime_library": "libneuronusdk_runtime.mtk.so.8"
-    }
+    "cxx": "/path/to/aarch64-linux-gnu-g++",
+    "sysroot": "/path/to/target-sysroot",
+    "sdk_include": "/path/to/sdk/include",
+    "dependencies": "/path/to/G720/tools/cpp_llm/prepared"
 }
