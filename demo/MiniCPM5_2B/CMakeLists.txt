@@ -1,10 +1,11 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.19)
+
+# 工具链从唯一 config.json 读取编译设置,在 project 前选择编译器.
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/genio_720.cmake")
+include("${CMAKE_TOOLCHAIN_FILE}")
+list(PREPEND CMAKE_PREFIX_PATH "${DEMO_DEPENDENCIES}")
 project(minicpm5_chat LANGUAGES CXX)
 
-set(DEMO_PLATFORM "genio_720" CACHE STRING "目标平台")
-if(NOT DEMO_PLATFORM STREQUAL "genio_720")
-    message(FATAL_ERROR "尚未实现该平台: ${DEMO_PLATFORM}")
-endif()
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
     message(FATAL_ERROR "当前平台后端需要 Linux,请使用目标板工具链配置")
 endif()
@@ -53,5 +54,8 @@ target_link_libraries(minicpm_mtk PRIVATE chat_core nlohmann_json::nlohmann_json
     ${CNPY_LIBRARY} ZLIB::ZLIB Threads::Threads ${CMAKE_DL_LIBS} m)
 
 add_executable(minicpm5_chat main.cpp)
-target_link_libraries(minicpm5_chat PRIVATE chat_core minicpm_mtk)
+target_link_libraries(minicpm5_chat PRIVATE chat_core minicpm_mtk nlohmann_json::nlohmann_json)
 install(TARGETS minicpm5_chat RUNTIME DESTINATION bin)
+# 同一份本地配置进入当前构建和安装目录,不提交真实资源路径.
+configure_file(config.json config.json COPYONLY)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/config.json" DESTINATION bin)

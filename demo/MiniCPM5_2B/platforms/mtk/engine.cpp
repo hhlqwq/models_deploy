@@ -5,7 +5,6 @@
 #include <cfenv>
 #include <cmath>
 #include <cstring>
-#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -107,10 +106,8 @@ struct Tensor {
 class RuntimeApi {
  public:
     // 在目标板解析已有 SDK C ABI,不把新版板端 GLIBC 依赖带入交叉链接.
-    RuntimeApi() {
-        const char* configured = std::getenv("MTK_RUNTIME_LIBRARY");
-        library_ = dlopen(configured ? configured : "libneuronusdk_runtime.mtk.so.8",
-                          RTLD_NOW | RTLD_LOCAL);
+    explicit RuntimeApi(const std::string& library) {
+        library_ = dlopen(library.c_str(), RTLD_NOW | RTLD_LOCAL);
         if (!library_) throw std::runtime_error(std::string("加载 MTK Runtime 失败: ") + dlerror());
         try {
             create = Symbol<decltype(create)>("NeuronRuntime_create");
@@ -340,7 +337,8 @@ class Embedding {
 class MtkEngine final : public Engine {
  public:
     // 检查资源后只加载一次双图、分词器和输入银行.
-    MtkEngine(const fs::path& root, const fs::path& template_path) {
+    MtkEngine(const fs::path& root, const fs::path& template_path,
+              const std::string& runtime_library) {
         const uint16_t endian = 1;
         if (*reinterpret_cast<const uint8_t*>(&endian) != 1 || std::fesetround(FE_TONEAREST) != 0) {
             throw std::runtime_error("需要小端平台与最近偶数浮点舍入.");
@@ -370,7 +368,7 @@ class MtkEngine final : public Engine {
         }
         bank_ = cnpy::npz_load(CheckedResource(root, "tokenizer/generation_inputs.npz").string());
         const auto& contracts = manifest_.at("graph_contracts");
-        api_ = std::make_shared<RuntimeApi>();
+        api_ = std::make_shared<RuntimeApi>(runtime_library);
         std::cout << "[加载] Prefill DLA.\n" << std::flush;
         prompt_ = std::make_unique<Graph>(api_, CheckedResource(root, manifest_.at("model_files").at("prompt").get<std::string>()), contracts.at("prompt"));
         std::cout << "[加载] Decode DLA.\n" << std::flush;
@@ -571,8 +569,14 @@ class MtkEngine final : public Engine {
 }  // 匿名命名空间.
 
 // 工厂使平台资源与会话业务分离,失败时由各资源的 RAII 释放已加载部分.
-std::unique_ptr<Engine> LoadMtkEngine(const fs::path& models, const fs::path& chat_template) {
-    return std::make_unique<MtkEngine>(models, chat_template);
+std::unique_ptr<Engine> LoadMtkEngine(const fs::path& models, const fs::path& chat_template,
+                                    const std::string& runtime_library) {
+    return std::make_unique<MtkEngine>(models, chat_template, runtime_library);
+}
+
+// 不受调用者工作目录影响,运行配置默认与可执行程序放在一起.
+std::filesystem::path DefaultConfigPath() {
+    return std::filesystem::canonical("/proc/self/exe").parent_path() / "config.json";
 }
 
 }  // 命名空间 minicpm.
