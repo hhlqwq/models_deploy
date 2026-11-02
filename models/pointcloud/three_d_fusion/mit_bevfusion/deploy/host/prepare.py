@@ -84,8 +84,8 @@ def main():
     args = parser.parse_args()
     ctx = context(__file__)
     data = ctx.config["data"]
-    if args.evaluate and not is_test() and (data["version"], data["split"]) != ("v1.0-trainval", "val"):
-        raise ValueError("正式评价需在本模型配置中选择 v1.0-trainval/val 及已解压的数据根目录.")
+    if args.evaluate and not is_test() and (data["version"], data["split"]) != ("v1.0-mini", "mini_val"):
+        raise ValueError("本模型正式评价固定使用已解压的 v1.0-mini/mini_val,共 81 帧,2 个场景.")
     frames = index_frames(ctx.dataset, data["version"], data["split"])
     if args.evaluate:
         frames = select_samples(frames, "mit_bevfusion", key=lambda frame: frame["token"])

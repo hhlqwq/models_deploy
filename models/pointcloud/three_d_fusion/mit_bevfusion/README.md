@@ -37,11 +37,11 @@ bash compile.sh
 
 现有 NAS 的 nuScenes 数据适用于该模型.已解压的 `v1.0-mini` 可用于编译示例: 十个场景 404 帧,官方 `mini_val` 为两个场景 81 帧.已核对六路相机,LIDAR_TOP,历史 sweep 和标定引用;首帧无历史按官方规则补齐.
 
-正式精度必须使用 `v1.0-trainval/val` 的 150 场景 6019 帧.现有 trainval 元数据已解压,十个 blobs 压缩包尚未形成可直接评价的完整 `samples/` 与 `sweeps/` 数据树.开始全量评价前需要完成解压并保持官方相对目录,本次没有进行大包解压或全量推理.不需要为检测任务另外准备 lidarseg,panoptic 或 CAN bus 标签.
+本模型约定评价范围为官方 `v1.0-mini/mini_val` 的全部 81 帧,2 个场景,不代表 `v1.0-trainval/val` 的 150 场景 6019 帧基准.compile 与 evaluate 使用相同的 81 帧;evaluate 额外测量性能和进程峰值 RSS.仅同步清单所需的相机,LiDAR 和历史 sweep 文件,现有输入约 587 MiB,无需解压或上传完整 trainval.逐帧读取输入,不将整个数据集加载进内存;缩小数据范围主要减少存储和耗时,不改变单帧推理内存需求.
 
 ## 独立评价
 
-完整评价由用户运行.先在本模型 `config.yaml` 选择已解压的 trainval 数据根目录,设置 `version: v1.0-trainval` 和 `split: val`;板端配置的数据目录应包含同一批 `samples/` 与 `sweeps/`.评价依赖为 [nuScenes devkit 1.2.0](https://pypi.org/project/nuscenes-devkit/1.2.0/),具体版本见 `deploy/requirements-evaluate.txt`.compile 的子集评分和 evaluate 的全量评分都需要该包.依赖隔离在 `$HOME/.local/share/mtk_models/bevfusion-evaluation`,由本模型两个 Shell 入口加载,不覆盖共享 NumPy、OpenCV 或 MTK SDK.
+约定范围的完整评价由用户运行.本模型 `config.yaml` 保持已解压的 mini 数据根目录,`version: v1.0-mini` 和 `split: mini_val`;板端配置的数据目录应包含同一批 `samples/` 与 `sweeps/`.评价依赖为 [nuScenes devkit 1.2.0](https://pypi.org/project/nuscenes-devkit/1.2.0/),具体版本见 `deploy/requirements-evaluate.txt`.compile 的子集评分和 evaluate 的全量评分都需要该包.依赖隔离在 `$HOME/.local/share/mtk_models/bevfusion-evaluation`,由本模型两个 Shell 入口加载,不覆盖共享 NumPy、OpenCV 或 MTK SDK.
 
 在编译容器内执行:
 
@@ -49,7 +49,7 @@ bash compile.sh
 bash models/pointcloud/three_d_fusion/mit_bevfusion/deploy/evaluate.sh
 ```
 
-主机入口预检全部文件,在本地日期过程目录生成样本清单、标注和同协议 FP32 参考.已有同模型同协议参考时直接复用,不重复推理.主机处理完整元数据,板端仅加载评分必需标注,避免在板端展开整个 trainval 原始数据库.
+主机入口预检全部文件,在本地日期过程目录生成样本清单、标注和同协议 FP32 参考.已有同模型同协议参考时直接复用,不重复推理.主机处理完整元数据,板端仅加载评分必需标注,避免在板端加载原始元数据表.
 
 入口自动上传必要参考、样本清单和评分标注至板端 `build/reference/`,无需手工搬运或重新编译模型.板端配置的数据集根目录仍须具备实际传感器输入文件.在板端部署目录执行:
 
@@ -57,7 +57,7 @@ bash models/pointcloud/three_d_fusion/mit_bevfusion/deploy/evaluate.sh
 bash evaluate.sh
 ```
 
-板端评价覆盖 6019 帧,复用 nuScenes 官方类别距离,空点框及 bicycle rack 过滤和评分算法,仅生成 `results/summary.json`.报告包含 mAP,NDS,同协议参考及百分点变化,每帧 NPU 调用总耗时,不含文件加载和图像预处理的完整推理耗时,以及评分前采集的 Python 推理进程峰值 RSS.缺少匹配参考时在推理前停止;缺少样本直接停止,不跳过或改用 mini.
+板端评价覆盖 mini_val 全部 81 帧,2 个场景,复用 nuScenes 官方类别距离,空点框及 bicycle rack 过滤和评分算法,仅生成 `results/summary.json`.报告包含 mAP,NDS,同协议参考及百分点变化,每帧 NPU 调用总耗时,不含文件加载和图像预处理的完整推理耗时,以及评分前采集的 Python 推理进程峰值 RSS.缺少匹配参考时在推理前停止;缺少样本直接停止,不跳过或替换样本.
 
 目前没有正式精度,性能和 RSS 结果,所以仓库没有创建 `results/summary.json`.本次仅验证入口、依赖和轻量评分接口,没有重新执行全量模型推理.
 

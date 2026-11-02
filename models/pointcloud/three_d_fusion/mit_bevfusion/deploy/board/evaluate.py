@@ -62,6 +62,23 @@ def evaluate_dataset(models, dataset, samples, predictions_path, floating=False)
     return predictions, float(np.mean(elapsed)), float(np.mean(npu_elapsed)), rss
 
 
+def validate_manifest(manifest, data, subset):
+    """核对约定划分及完整覆盖,正式评价固定使用 mini_val 的 81 帧."""
+    version, split = data["version"], data["split"]
+    counts = {("v1.0-mini", "mini_val"): 81, ("v1.0-trainval", "val"): 6019}
+    if not subset and (version, split) != ("v1.0-mini", "mini_val"):
+        raise ValueError("本模型正式评价约定为 v1.0-mini/mini_val 的 81 帧,2 个场景.")
+    if (version, split) not in counts:
+        raise ValueError("不支持的 nuScenes 评价划分.")
+    expected = min(100, counts[(version, split)]) if subset else 81
+    frames = manifest["frames"]
+    if (manifest["version"], manifest["split"], len(frames)) != (version, split, expected):
+        raise ValueError(f"评价清单与配置不符,要求 {version}/{split} 的 {expected} 帧.")
+    if len({frame["token"] for frame in frames}) != expected:
+        raise ValueError("评价样本重复.")
+    return expected
+
+
 def main():
     """缺少数据,评分依赖或匹配参考时如实停止或记录缺失项."""
     # 在长时间推理之前检查评分依赖,避免到最后才失败.
@@ -72,11 +89,7 @@ def main():
     manifest_path = ctx.root / "build/reference" / ("compile_samples.json" if is_test() else "full_samples.json")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     samples = manifest["frames"]
-    expected_count = min(100, 81 if ctx.config["data"]["version"] == "v1.0-mini" else 6019) if is_test() else 6019
-    expected_version = ctx.config["data"]["version"] if is_test() else "v1.0-trainval"
-    expected_split = ctx.config["data"]["split"] if is_test() else "val"
-    if (manifest["version"], manifest["split"], len(samples)) != (expected_version, expected_split, expected_count):
-        raise ValueError("正式评价仅接受 v1.0-trainval/val 完整 6019 帧.")
+    expected_count = validate_manifest(manifest, ctx.config["data"], is_test())
     tokens = [frame["token"] for frame in samples]
     record_selection(tokens)
     ground_truth = ctx.root / "build/reference" / ("compile_ground_truth.json" if is_test() else "full_ground_truth.json")
@@ -111,8 +124,10 @@ def main():
     files.extend(models / name for name in ("sparse_weights.npz", "geometry.npz"))
     report = {"model": "MIT BEVFusion camera+lidar swint_v0p075", "run_id": ctx.run_id,
               "status": "complete" if reference else "partial", "platform": "Genio 720 / MT8189",
-              "precision": "CPU FP32 + NPU FP16", "protocol": "nuScenes detection_cvpr_2019, v1.0-trainval val",
-              "evaluated_samples": len(samples), "expected_samples": 6019,
+              "precision": "CPU FP32 + NPU FP16", "protocol": "nuScenes detection_cvpr_2019, v1.0-mini mini_val",
+              "dataset": {"version": "v1.0-mini", "split": "mini_val", "scenes": 2,
+                          "scope": "完整 mini_val,不代表 trainval/val 6019 帧基准"},
+              "evaluated_samples": len(samples), "expected_samples": expected_count,
               "board_accuracy": accuracy, "reference_accuracy": reference["accuracy"] if reference else None,
               "accuracy_change_percentage_points": {name: (accuracy[name] - reference["accuracy"][name]) * 100
                                                      for name in accuracy} if reference else None,

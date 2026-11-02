@@ -45,6 +45,29 @@ TASKS = {
 class DeployFlowTest(unittest.TestCase):
     """只使用小数组、临时文件和命令替身检查接口与控制流程."""
 
+    def test_bev_formal_mini_manifest(self):
+        """正式评价接受完整 mini_val,拒绝缺帧,重复帧及旧 trainval 清单."""
+        source = ROOT / "models/pointcloud/three_d_fusion/mit_bevfusion/deploy/board/evaluate.py"
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        function = next(node for node in tree.body
+                        if isinstance(node, ast.FunctionDef) and node.name == "validate_manifest")
+        namespace = {}
+        exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), "exec"), namespace)
+        validate = namespace["validate_manifest"]
+        data = {"version": "v1.0-mini", "split": "mini_val"}
+        manifest = {**data, "frames": [{"token": str(index)} for index in range(81)]}
+        self.assertEqual(validate(manifest, data, False), 81)
+        self.assertEqual(validate(manifest, data, True), 81)
+        for broken in ({**manifest, "frames": manifest["frames"][:-1]},
+                       {**manifest, "frames": [manifest["frames"][0]] * 81},
+                       {**manifest, "split": "val"}):
+            with self.assertRaises(ValueError):
+                validate(broken, data, False)
+        trainval = {"version": "v1.0-trainval", "split": "val"}
+        with self.assertRaises(ValueError):
+            validate({**trainval, "frames": [{"token": str(i)} for i in range(6019)]},
+                     trainval, False)
+
     def test_yolov8_evaluation_backend_paths(self):
         """执行真实入口,验证配置和命令行路径及两个后端的报告位置."""
         import argparse

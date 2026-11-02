@@ -11,16 +11,16 @@ from tools.deploy import context
 from tools.evaluation import is_test
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "board"))
-from evaluate import evaluate_dataset, identity
+from evaluate import evaluate_dataset, identity, validate_manifest
 from scoring import score_predictions
 
 
 def main():
     """使用已有四个 ONNX 和相同 CPU 稀疏主干计算完整浮点参考."""
     ctx = context(__file__)
-    samples = json.loads((ctx.work / "samples.json").read_text(encoding="utf-8"))["frames"]
-    if not is_test() and len(samples) != 6019:
-        raise ValueError("完整浮点参考必须覆盖 val 6019 帧.")
+    manifest = json.loads((ctx.work / "samples.json").read_text(encoding="utf-8"))
+    validate_manifest(manifest, ctx.config["data"], is_test())
+    samples = manifest["frames"]
     package = ctx.output / "models"
     fingerprint = identity(package)
     tokens = [sample["token"] for sample in samples]
@@ -37,6 +37,7 @@ def main():
                                            temporary / "predictions.json", floating=True)
     accuracy = score_predictions(ctx.work / "ground_truth.json", predictions)
     target.write_text(json.dumps({"identity": fingerprint, "sample_tokens": tokens, "accuracy": accuracy,
+        "dataset": {"version": manifest["version"], "split": manifest["split"]},
         "evaluation": accuracy_result("mit_bevfusion", "onnx", accuracy, len(tokens), "frame")}),
                       encoding="utf-8")
     print("[参考完成] 浮点精度已保存,入口接下来自动上传至板端 build/reference/.", flush=True)
