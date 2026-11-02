@@ -1,0 +1,172 @@
+{
+    "date": "2026-11-02",
+    "status": "passed",
+    "scope": "cpp_functional_and_same_model_generation_consistency_only",
+    "platform": "genio_720",
+    "board": {
+        "architecture": "aarch64",
+        "kernel": "6.6.137-mtk+ga246e0c68c39-g429091ed5965",
+        "compatible": [
+            "mediatek,mt8391-evk",
+            "mediatek,mt8391",
+            "mediatek,mt8189"
+        ]
+    },
+    "model": {
+        "name": "MiniCPM5-2B",
+        "precision": "W4A16",
+        "context_tokens": 1024,
+        "prefill_tokens": 128,
+        "decode_tokens": 1,
+        "past_kv_slots": 1024,
+        "resources": "existing_board_deployment_unchanged"
+    },
+    "build": {
+        "status": "passed",
+        "system": "CMake",
+        "compiler": "GNU AArch64 11.4.0",
+        "rust": "1.88.0",
+        "tokenizers_cpp": "0.1.1",
+        "rust_tokenizers": "0.21.0",
+        "runtime_interface": "SDK_C_ABI_dynamic_loading",
+        "binary_bytes": 12831280,
+        "binary_sha256": "83fb2aaefa35c6a395c01471739c74d7df411f2568b6918fbd1432b94687bb22"
+    },
+    "generation_consistency": {
+        "status": "passed",
+        "cases": 7,
+        "comparison": "same_board_same_model_greedy; trailing stop token excluded consistently",
+        "tests": [
+            {
+                "id": "short",
+                "input_count": 20,
+                "input_tokens_equal": true,
+                "generated_tokens_equal": true,
+                "text_equal": true,
+                "stop_reason_equal": true,
+                "text": "I'm a MiniCPM model, developed by ModelBest Inc. and the",
+                "stop_reason": "generation_limit",
+                "generated_token_count": 16
+            },
+            {
+                "id": "multiturn",
+                "input_count": 45,
+                "input_tokens_equal": true,
+                "generated_tokens_equal": true,
+                "text_equal": true,
+                "stop_reason_equal": true,
+                "text": "My name is Alice.",
+                "stop_reason": "eos",
+                "generated_token_count": 5
+            },
+            {
+                "id": "cross_prefill",
+                "input_count": 190,
+                "input_tokens_equal": true,
+                "generated_tokens_equal": true,
+                "text_equal": true,
+                "stop_reason_equal": true,
+                "text": "OK",
+                "stop_reason": "eos",
+                "generated_token_count": 1
+            },
+            {
+                "id": "chinese",
+                "input_count": 23,
+                "input_tokens_equal": true,
+                "generated_tokens_equal": true,
+                "text_equal": true,
+                "stop_reason_equal": true,
+                "text": "这是一个脑筋急转弯。1 + 1 = 2。",
+                "stop_reason": "eos",
+                "generated_token_count": 15
+            },
+            {
+                "id": "prefill_128",
+                "input_count": 128,
+                "input_tokens_equal": true,
+                "generated_tokens_equal": true,
+                "text_equal": true,
+                "stop_reason_equal": true,
+                "text": "The user's prompt contains a repetitive string",
+                "stop_reason": "generation_limit",
+                "generated_token_count": 8
+            },
+            {
+                "id": "prefill_129",
+                "input_count": 129,
+                "input_tokens_equal": true,
+                "generated_tokens_equal": true,
+                "text_equal": true,
+                "stop_reason_equal": true,
+                "text": "The user's message appears to be a",
+                "stop_reason": "generation_limit",
+                "generated_token_count": 8
+            },
+            {
+                "id": "prefill_256",
+                "input_count": 256,
+                "input_tokens_equal": true,
+                "generated_tokens_equal": true,
+                "text_equal": true,
+                "stop_reason_equal": true,
+                "text": "It seems like you're repeating \"test",
+                "stop_reason": "generation_limit",
+                "generated_token_count": 8
+            }
+        ]
+    },
+    "interactive_cli": {
+        "status": "passed",
+        "checks": {
+            "exit_zero": true,
+            "model_loaded_once": true,
+            "two_turn_history": true,
+            "name_recalled": true,
+            "reset_ack": true,
+            "context_overflow_rejected": true,
+            "recovery_after_reset_and_overflow": true,
+            "chinese_output": true,
+            "utf8_no_replacement": true,
+            "release_notice": true,
+            "eof_exit_zero": true,
+            "help_without_model": true,
+            "missing_resource_nonzero": true,
+            "name_recalled_in_second_answer": true,
+            "installed_binary_matches_tested": true,
+            "installed_directory_smoke": true
+        },
+        "overflow_input_tokens": 1114,
+        "overflow_reserved_generation_tokens": 32
+    },
+    "template_reference": {
+        "status": "passed",
+        "messages": 3,
+        "bytes": 188,
+        "matches_original_framework_bytes": true
+    },
+    "fixes": [
+        "pin Rust tokenizers to 0.21.0 for tokenizers-cpp 0.1.1",
+        "load system SDK C ABI dynamically to avoid old sysroot/new GLIBC link conflict",
+        "validate actual 1024-slot past KV rather than context-minus-batch"
+    ],
+    "deployment": {
+        "status": "passed",
+        "directory_relative_to_board_root": "demo/MiniCPM5_2B",
+        "model_files_replaced": false,
+        "system_libraries_modified": false,
+        "nas_dependency_store": "G720/tools/cpp_llm"
+    },
+    "metrics": {
+        "accuracy": null,
+        "performance": null,
+        "peak_rss": null
+    },
+    "not_measured": [
+        "formal_task_accuracy",
+        "independent_performance",
+        "peak_rss"
+    ],
+    "missing": [],
+    "evidence_temp_dir": "/tmp/hailongcodex/2026-11-02/minicpm5_cpp"
+}
