@@ -45,6 +45,50 @@ TASKS = {
 class DeployFlowTest(unittest.TestCase):
     """只使用小数组、临时文件和命令替身检查接口与控制流程."""
 
+    def test_yolov8_evaluation_backend_paths(self):
+        """执行真实入口,验证配置和命令行路径及两个后端的报告位置."""
+        import argparse
+
+        entry = ROOT / "models/perception/object_detection/yolov8n/deploy/host/evaluate_onnx.py"
+        tree = ast.parse(entry.read_text(encoding="utf-8"))
+        main = next(node for node in tree.body
+                    if isinstance(node, ast.FunctionDef) and node.name == "main")
+        ctx = SimpleNamespace(config={"model": {"weights": "/models/original/yolov8n.pt"}},
+                              output=Path("/models"), work=Path("/work"))
+
+        def configure(parser, entry, bindings):
+            """提供配置默认值,不读取正式资源或运行模型."""
+            parser.set_defaults(dataset_root=Path("/dataset"),
+                                output=Path("/work/onnx_reference.json"))
+            for action in parser._actions:
+                if action.dest in ("dataset_root", "output"):
+                    action.required = False
+            return ctx
+
+        for subset in (False, True):
+            calls = []
+            namespace = {"argparse": argparse, "Path": Path, "__file__": str(entry),
+                         "configure_parser": configure, "reference_path": mock.Mock(),
+                         "is_test": lambda: subset, "evaluate": calls.append}
+            exec(compile(ast.Module(body=[main], type_ignores=[]), str(entry), "exec"), namespace)
+            with mock.patch.object(sys, "argv", [str(entry)]):
+                namespace["main"]()
+            self.assertEqual(len(calls), 2)
+            pytorch, onnx = calls
+            self.assertIsInstance(pytorch.weights, Path)
+            self.assertEqual(pytorch.weights, Path(ctx.config["model"]["weights"]))
+            self.assertIsNone(pytorch.onnx)
+            report = "pytorch_reference_test.json" if subset else "pytorch_reference.json"
+            self.assertEqual(pytorch.output, ctx.work / report)
+            self.assertIsNone(onnx.weights)
+            self.assertEqual(onnx.onnx, ctx.output / "yolov8n.onnx")
+            self.assertEqual(onnx.output, Path("/work/onnx_reference.json"))
+            calls.clear()
+            with mock.patch.object(sys, "argv", [str(entry), "--weights", "/custom/model.pt"]):
+                namespace["main"]()
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0].weights, Path("/custom/model.pt"))
+
     def setUp(self):
         """隔离范围、样本标识及临时目录,不访问正式模型或数据集."""
         self.environment = mock.patch.dict(os.environ, {"MTK_EVAL_SCOPE": "subset"})
