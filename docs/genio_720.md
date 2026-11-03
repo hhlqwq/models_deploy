@@ -10,7 +10,7 @@
 
 编译在 Ubuntu Docker 容器执行,板端执行真实 NPU 推理.使用 `--arch=mdla5.3` 和 `--disallow-bridge`,整数原生 I/O 的转换参数须与实际张量契约一致.系统与模型所需 Runtime 不匹配时停止运行并核对版本,不覆盖系统库强行兼容.
 
-主机 compile.sh 完成导出、量化、编译及固定子集浮点精度后,自动上传部署文件及必要参考.用户登录板端执行 compile.sh,完成同子集 NPU 精度、损失、固定少量输入的 CosSim/RMSE/NRMSE 和示例,保存 results/summary_test.json.全量 evaluate.sh 不重复采集数值参考.主机不会自动启动板端推理.普通入口无参数,主机总入口为 models/deploy/compile.sh 与 evaluate.sh,板端为 deploy/compile_board.sh 与 evaluate_board.sh;各入口依次运行全部模型,首个失败即停止.
+主机 compile.sh 完成导出、量化、编译及固定子集浮点精度后,自动上传部署文件及必要参考.用户登录板端执行 compile.sh,完成同子集 NPU 精度、损失、固定少量输入的 CosSim/RMSE/NRMSE 和示例,保存 results/summary_test.json.全量 evaluate.sh 不重复采集数值参考.主机不会自动启动板端推理.普通入口无参数,主机总入口为 mtk_models/deploy/compile.sh 与 evaluate.sh,板端为 deploy/compile_board.sh 与 evaluate_board.sh;各入口依次运行全部模型,首个失败即停止.
 
 入口直接顺序调用命令,输出和错误直接显示在终端,只补充必要阶段提示,不默认保存编译日志.Docker 公共环境由创建容器入口统一设置,板端路径复用公共工具.只保存运行、评分和排错必需的数据.
 

@@ -22,8 +22,8 @@ SOURCE_RECORDS = {"LICENSE", "LICENSE.txt", "source_url.txt",
 def inventory(repo, destination):
     """列出资源映射,文档和源码保留在代码目录并复制配套源码."""
     entries = []
-    for model in sorted((repo / "models").glob("*/*/*/models")):
-        target = destination / model.parent.relative_to(repo / "models")
+    for model in sorted((repo / "mtk_models").glob("*/*/*/models")):
+        target = destination / model.parent.relative_to(repo / "mtk_models")
         for source in sorted(model.rglob("*")):
             if not source.is_file() or source.is_symlink():
                 continue

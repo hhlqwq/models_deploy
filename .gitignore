@@ -13,17 +13,17 @@ __pycache__/
 # 本地环境和日志.
 configs/storage.local.json
 configs/platforms/*.local.yaml
-models/deploy/platform.local.sh
+mtk_models/deploy/platform.local.sh
 .env
 # MiniCPM5 Demo 的本地编译路径与构建产物.
 demo/MiniCPM5_2B/config.json
 demo/MiniCPM5_2B/build/
 *.log
 logs/
-!models/**/results/full_accuracy/**/*.log
+!mtk_models/**/results/full_accuracy/**/*.log
 
 # 模型与转换产物.
-models/gen_ai/llm/deepseek_r1_distill_qwen_1_5b/models/generated/
+mtk_models/gen_ai/llm/deepseek_r1_distill_qwen_1_5b/models/generated/
 *.pt
 *.pth
 *.safetensors
@@ -34,7 +34,7 @@ models/gen_ai/llm/deepseek_r1_distill_qwen_1_5b/models/generated/
 *.pb
 *.weights
 *.onnx.data
-models/**/models/*.data
+mtk_models/**/models/*.data
 *.torchscript
 *.onnx
 *.tflite
@@ -46,42 +46,42 @@ models/**/models/*.data
 *.zip
 *.tar.gz
 # 转换生成的运行参数随模型部署,不提交 Git.
-models/**/models/quantization.json
+mtk_models/**/models/quantization.json
 # 正在下载的模型
 *.crdownload
 
 # ViT 官方权重的本地导出与校验产物.
-models/perception/image_classification/vit_base_patch16_224/models/exported/
-models/perception/image_classification/vit_base_patch16_224/models/labels.txt
-models/perception/image_classification/vit_base_patch16_224/models/imagenet_eval/
-models/perception/image_classification/vit_base_patch16_224/models/vit-onnx-float/
+mtk_models/perception/image_classification/vit_base_patch16_224/models/exported/
+mtk_models/perception/image_classification/vit_base_patch16_224/models/labels.txt
+mtk_models/perception/image_classification/vit_base_patch16_224/models/imagenet_eval/
+mtk_models/perception/image_classification/vit_base_patch16_224/models/vit-onnx-float/
 
 # RTMPose 官方权重的本地导出与校验产物.
-models/interaction/pose_detection/rtmpose_body2d/models/exported/
-models/interaction/pose_detection/rtmpose_body2d/models/rtmpose_body2d.data
+mtk_models/interaction/pose_detection/rtmpose_body2d/models/exported/
+mtk_models/interaction/pose_detection/rtmpose_body2d/models/rtmpose_body2d.data
 
 # MobileFaceNet 下载的人脸对齐源码和检测权重,已跟踪的模型定义继续保留.
-models/interaction/face_recognition/mobilefacenet/models/upstream/
+mtk_models/interaction/face_recognition/mobilefacenet/models/upstream/
 
 # Depth Anything V2 Small 官方源码、转换产物与运行证据.
-models/navigation/single_camera_depth/depth_anything_v2_small/models/upstream/
-models/navigation/single_camera_depth/depth_anything_v2_small/models/*.json
-models/navigation/single_camera_depth/depth_anything_v2_small/examples/output/runs/
+mtk_models/navigation/single_camera_depth/depth_anything_v2_small/models/upstream/
+mtk_models/navigation/single_camera_depth/depth_anything_v2_small/models/*.json
+mtk_models/navigation/single_camera_depth/depth_anything_v2_small/examples/output/runs/
 
 # Whisper-Tiny 官方权重、导出模型与运行证据.
-models/audio/stt/whisper_tiny/models/tiny.pt
-models/audio/stt/whisper_tiny/models/onnx_manifest.json
-models/audio/stt/whisper_tiny/examples/output/runs/
+mtk_models/audio/stt/whisper_tiny/models/tiny.pt
+mtk_models/audio/stt/whisper_tiny/models/onnx_manifest.json
+mtk_models/audio/stt/whisper_tiny/examples/output/runs/
 
 # FastSAM 本地导出、校准与完整性记录.
-models/navigation/segmentation/fastsam/models/*.json
-models/navigation/segmentation/fastsam/models/runtime_config.csv
+mtk_models/navigation/segmentation/fastsam/models/*.json
+mtk_models/navigation/segmentation/fastsam/models/runtime_config.csv
 
 # YOLOv8n 本地导出、量化契约与产物哈希.
-models/perception/object_detection/yolov8n/models/*.json
-models/perception/object_detection/yolov8n/models/runtime_config.csv
-models/perception/object_detection/yolov8n/models/SHA256SUMS
-models/perception/object_detection/yolov8n/results/predictions.json
+mtk_models/perception/object_detection/yolov8n/models/*.json
+mtk_models/perception/object_detection/yolov8n/models/runtime_config.csv
+mtk_models/perception/object_detection/yolov8n/models/SHA256SUMS
+mtk_models/perception/object_detection/yolov8n/results/predictions.json
 
 
 
@@ -96,10 +96,10 @@ datasets/
 !**/examples/input/public/**
 !**/examples/output/public/
 !**/examples/output/public/**
-!models/perception/object_detection/yolov5s/examples/input/*.jpg
-!models/perception/object_detection/yolov5s/examples/output/*.jpg
-!models/perception/object_detection/yolov5s/examples/output/*.json
-!models/perception/object_detection/yolov5s/examples/output/*.jsonl
+!mtk_models/perception/object_detection/yolov5s/examples/input/*.jpg
+!mtk_models/perception/object_detection/yolov5s/examples/output/*.jpg
+!mtk_models/perception/object_detection/yolov5s/examples/output/*.json
+!mtk_models/perception/object_detection/yolov5s/examples/output/*.jsonl
 
 # 保留空模型目录说明.
 !**/models/README.md
@@ -114,32 +114,32 @@ Thumbs.db
 .vendor
 
 
-!models/TFLite/**/*.log
+!mtk_models/TFLite/**/*.log
 
 # 跟踪固定示例输入和已展示的实际输出,其余输出在上传确认后纳入 Git.
 !**/examples/input/sample_*.jpg
 !**/examples/input/sample_*.JPEG
 !**/examples/input/sample_*.wav
 !**/examples/output/sample_*_classification.jpg
-!models/navigation/segmentation/fastsam/examples/output/sample_*_segmentation.jpg
-!models/interaction/pose_detection/rtmpose_body2d/examples/output/sample_*_keypoints.jpg
-!models/interaction/face_recognition/mobilefacenet/examples/output/sample_*_verification.jpg
-!models/navigation/single_camera_depth/depth_anything_v2_small/examples/output/sample_*_depth.jpg
-!models/perception/object_detection/yolov8n/examples/output/sample_*_detections.jpg
+!mtk_models/navigation/segmentation/fastsam/examples/output/sample_*_segmentation.jpg
+!mtk_models/interaction/pose_detection/rtmpose_body2d/examples/output/sample_*_keypoints.jpg
+!mtk_models/interaction/face_recognition/mobilefacenet/examples/output/sample_*_verification.jpg
+!mtk_models/navigation/single_camera_depth/depth_anything_v2_small/examples/output/sample_*_depth.jpg
+!mtk_models/perception/object_detection/yolov8n/examples/output/sample_*_detections.jpg
 
 # 示例运行清单自动生成并随部署上传,不纳入 Git.
 **/examples/input/samples.json
 
 # YAMNet 官方资源、转换产物和板端运行参数.
-models/audio/ambient_sound/yamnet/models/upstream/
-models/audio/ambient_sound/yamnet/models/*.json
-models/audio/ambient_sound/yamnet/models/runtime_config.csv
-models/audio/ambient_sound/yamnet/models/runtime_config_*.csv
-models/audio/ambient_sound/yamnet/models/yamnet_class_map.csv
-!models/audio/ambient_sound/yamnet/examples/output/sample_*_events.json
+mtk_models/audio/ambient_sound/yamnet/models/upstream/
+mtk_models/audio/ambient_sound/yamnet/models/*.json
+mtk_models/audio/ambient_sound/yamnet/models/runtime_config.csv
+mtk_models/audio/ambient_sound/yamnet/models/runtime_config_*.csv
+mtk_models/audio/ambient_sound/yamnet/models/yamnet_class_map.csv
+!mtk_models/audio/ambient_sound/yamnet/examples/output/sample_*_events.json
 
 # 保留本次双语 LLM 的真实板端和原始框架文本输出.
-!models/gen_ai/llm/deepseek_r1_distill_qwen_1_5b/examples/output/*.txt
+!mtk_models/gen_ai/llm/deepseek_r1_distill_qwen_1_5b/examples/output/*.txt
 
 # 对内文档
 docs/*.xlsx

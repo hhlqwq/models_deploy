@@ -21,7 +21,7 @@ ONNX 用于 FP32 基线和结构检查；本项目的 MTK INT8 PTQ 输入是 Tor
 以下命令在编译容器中执行：
 
 ```bash
-cd "${MTK_MODELS_ROOT}/models/perception/object_detection/yolov5s"
+cd "${MTK_MODELS_ROOT}/mtk_models/perception/object_detection/yolov5s"
 bash ./deploy/prepare.sh
 ```
 

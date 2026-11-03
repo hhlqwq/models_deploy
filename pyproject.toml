@@ -3,13 +3,13 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mtk-models-tools"
+name = "models-deploy-tools"
 version = "0.1.0"
-description = "MTK 模型部署公共工具和 FastSAM 后处理模块."
+description = "MTK 与 RDK 模型部署工具."
 requires-python = ">=3.10"
 
 [tool.setuptools]
-packages = ["tools", "tools.llm", "models.navigation.segmentation.fastsam.deploy.board"]
+packages = ["tools", "tools.llm", "mtk_models.navigation.segmentation.fastsam.deploy.board"]
 
 [tool.setuptools.package-data]
 "tools.llm" = ["*.sh"]

@@ -92,7 +92,7 @@ ncc-tflite \
 
 ## 7. 结果入口
 
-当前结果和计时范围见 [YOLOv5s README](../models/perception/object_detection/yolov5s/README.md),机器可读指标见 [summary.json](../models/perception/object_detection/yolov5s/results/summary.json).学习文档只说明流程,不重复维护指标表.
+当前结果和计时范围见 [YOLOv5s README](../mtk_models/perception/object_detection/yolov5s/README.md),机器可读指标见 [summary.json](../mtk_models/perception/object_detection/yolov5s/results/summary.json).学习文档只说明流程,不重复维护指标表.
 
 ## 8. MTK 官网资料导航
 

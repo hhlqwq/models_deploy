@@ -24,10 +24,10 @@
 
 | 项目 | 当前依据 | 开发前必须核实 |
 | --- | --- | --- |
-| Whisper | [模型说明](../../models/audio/stt/whisper_tiny/README.md)、[板端实现](../../models/audio/stt/whisper_tiny/deploy/board/infer.py)和[解码协议](../../models/audio/stt/whisper_tiny/deploy/board/decoder.py) | 板端实际产物、契约、分词资源及 SDK 是否配套 |
+| Whisper | [模型说明](../../mtk_models/audio/stt/whisper_tiny/README.md)、[板端实现](../../mtk_models/audio/stt/whisper_tiny/deploy/board/infer.py)和[解码协议](../../mtk_models/audio/stt/whisper_tiny/deploy/board/decoder.py) | 板端实际产物、契约、分词资源及 SDK 是否配套 |
 | Whisper 模型 | W8A16 双 DLA: `tiny_encoder_w8a16.dla`、`tiny_decoder_w8a16_1t256c.dla` | 不混用旧浮点模型,核对 `runtime_contract.json` 的 I/O、存储补齐及量化尺度 |
 | Whisper 解码 | 256 槽滑动 Cache,448 个绝对位置;现有板端推理为 Python | C++ 前后处理、Cache 更新、Token 过滤与文本解码对齐;中文语言提示需单独核实 |
-| Qwen | [现有运行说明](../../models/TFLite/02_Generative/qwen3-0.6b/README_qwen3-0.6b.md)展示 `llm_cmdline_tool`、配置文件与 `Qwen3NoInput` preformatter | NAS 原包内的模型、配置、tokenizer、头文件、库和官方示例,以及可直接调用的 C/C++ API |
+| Qwen | [现有运行说明](../../mtk_models/TFLite/02_Generative/qwen3-0.6b/README_qwen3-0.6b.md)展示 `llm_cmdline_tool`、配置文件与 `Qwen3NoInput` preformatter | NAS 原包内的模型、配置、tokenizer、头文件、库和官方示例,以及可直接调用的 C/C++ API |
 | 平台 | 首个目标为 Genio 720,编译复用 Ubuntu Docker 与本地平台配置 | AArch64 工具链、板端 Runtime、可用内存和 Wi-Fi/蓝牙设备状态;不把公开配置视为实时板端状态 |
 
 Qwen 仅使用用户指定的 NAS 目录中官方提供的运行包: `知识库(钉钉同构)/算法工具链/算法应用（主）/用户支持/MTK系/G720/TFLite/GenerativeAI/LLM/Qwen3-0.6B/qwen3-0.6b`.

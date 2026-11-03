@@ -5,7 +5,7 @@ models:
     pilot: false
     scenario: pointcloud
     category: three_d_fusion
-    path: models/pointcloud/three_d_fusion/mit_bevfusion
+    path: mtk_models/pointcloud/three_d_fusion/mit_bevfusion
     source: mit-han-lab/bevfusion
     delivery_reference: NVIDIA-AI-IOT/Lidar_AI_Solution/CUDA-BEVFusion
     platforms:
@@ -17,7 +17,7 @@ models:
     pilot: false
     scenario: perception
     category: image_classification
-    path: models/perception/image_classification/resnet101
+    path: mtk_models/perception/image_classification/resnet101
     source: pytorch/vision
     delivery_reference: qualcomm/ResNet101
     platforms:
@@ -29,7 +29,7 @@ models:
     pilot: false
     scenario: gen_ai
     category: llm
-    path: models/gen_ai/llm/minicpm5_2b
+    path: mtk_models/gen_ai/llm/minicpm5_2b
     source: openbmb/MiniCPM5-2B
     delivery_reference: D-Robotics/rdk_model_zoo/rdk_s/samples/llm/minicpm5-2b
     platforms:
@@ -41,7 +41,7 @@ models:
     pilot: false
     scenario: gen_ai
     category: llm
-    path: models/gen_ai/llm/deepseek_r1_distill_qwen_1_5b
+    path: mtk_models/gen_ai/llm/deepseek_r1_distill_qwen_1_5b
     source: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
     delivery_reference: D-Robotics/rdk_model_zoo_s
     platforms:
@@ -52,7 +52,7 @@ models:
     pilot: false
     scenario: audio
     category: ambient_sound
-    path: models/audio/ambient_sound/yamnet
+    path: mtk_models/audio/ambient_sound/yamnet
     source: tensorflow/models
     delivery_reference: qualcomm/YamNet
     platforms:
@@ -63,7 +63,7 @@ models:
     pilot: false
     scenario: perception
     category: object_detection
-    path: models/perception/object_detection/yolov8n
+    path: mtk_models/perception/object_detection/yolov8n
     source: ultralytics/ultralytics
     platforms:
       genio_720: converted
@@ -73,7 +73,7 @@ models:
     pilot: true
     scenario: navigation
     category: single_camera_depth
-    path: models/navigation/single_camera_depth/depth_anything_v2_small
+    path: mtk_models/navigation/single_camera_depth/depth_anything_v2_small
     source: DepthAnything/Depth-Anything-V2
     platforms:
       genio_720: converted
@@ -83,7 +83,7 @@ models:
     pilot: false
     scenario: navigation
     category: segmentation
-    path: models/navigation/segmentation/fastsam
+    path: mtk_models/navigation/segmentation/fastsam
     source: CASIA-LMC-Lab/FastSAM
     platforms:
       genio_720: converted
@@ -93,7 +93,7 @@ models:
     pilot: true
     scenario: perception
     category: object_detection
-    path: models/perception/object_detection/yolov5s
+    path: mtk_models/perception/object_detection/yolov5s
     source: ultralytics/yolov5
     delivery_reference: qualcomm/Yolo-v5
     platforms:
@@ -104,7 +104,7 @@ models:
     pilot: true
     scenario: perception
     category: image_classification
-    path: models/perception/image_classification/vit_base_patch16_224
+    path: mtk_models/perception/image_classification/vit_base_patch16_224
     source: pytorch/vision
     legacy_source: qualcomm/VIT
     delivery_reference: qualcomm/VIT
@@ -116,7 +116,7 @@ models:
     pilot: true
     scenario: interaction
     category: pose_detection
-    path: models/interaction/pose_detection/rtmpose_body2d
+    path: mtk_models/interaction/pose_detection/rtmpose_body2d
     source: open-mmlab/mmpose
     legacy_source: qualcomm/RTMPose-Body2d
     delivery_reference: qualcomm/RTMPose-Body2d
@@ -128,7 +128,7 @@ models:
     pilot: false
     scenario: interaction
     category: face_recognition
-    path: models/interaction/face_recognition/mobilefacenet
+    path: mtk_models/interaction/face_recognition/mobilefacenet
     source: foamliu/MobileFaceNet
     platforms:
       genio_720: converted
@@ -138,7 +138,7 @@ models:
     pilot: false
     scenario: audio
     category: stt
-    path: models/audio/stt/whisper_tiny
+    path: mtk_models/audio/stt/whisper_tiny
     source: openai/whisper
     delivery_reference: qualcomm/Whisper-Tiny
     platforms:

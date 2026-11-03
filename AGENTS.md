@@ -2,7 +2,9 @@
 
 ## 项目说明
 
-本项目面向 MTK Genio 720 和 G5100,对开源模型进行兼容性修改、转换、量化、部署与板端验证；模型交付结构、文档完整度和结果展示方式参考 Qualcomm Hugging Face Models,但不使用 Qualcomm 模型作为移植源.
+本项目 models_deploy 面向 MTK Genio 720 和 G5100,对开源模型进行兼容性修改、转换、量化、部署与板端验证；模型交付结构、文档完整度和结果展示方式参考 Qualcomm Hugging Face Models,但不使用 Qualcomm 模型作为移植源.
+
+MTK 实现位于 mtk_models/,编译环境位于 docker/mtk/.旧 MTK skill 中的顶层 models/ 路径按 mtk_models/ 理解,模型内部资源包 models/ 不改名.
 
 ## 工作规范
 

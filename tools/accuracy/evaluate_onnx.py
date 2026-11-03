@@ -168,7 +168,7 @@ def evaluate_coco(args, deploy: Path) -> tuple:
     """评测 FastSAM 类别无关分割,复用已有后处理."""
     # 仅当前模型或后端需要此依赖,其他评测模式和板端环境不要求安装.
     from pycocotools import mask as mask_utils
-    from models.navigation.segmentation.fastsam.deploy.board.fastsam_utils import (
+    from mtk_models.navigation.segmentation.fastsam.deploy.board.fastsam_utils import (
         preprocess, postprocess)
     helper = load_module("fastsam_metrics", deploy / "full_accuracy_board.py")
     with contextlib.redirect_stdout(io.StringIO()):
@@ -339,7 +339,7 @@ def evaluate_model(*, model, onnx, dataset_root, output, decoder_onnx=None, temp
         raise ValueError("Whisper 精度评测需要 Decoder ONNX.")
     args = argparse.Namespace(model=model, onnx=Path(onnx), dataset_root=Path(dataset_root),
                               output=Path(output), decoder_onnx=decoder_onnx, temp_dir=temp_dir)
-    deploy = ROOT / "models" / MODELS[args.model] / "deploy" / "board"
+    deploy = ROOT / "mtk_models" / MODELS[args.model] / "deploy" / "board"
     if args.model != "fastsam":
         sys.path.insert(0, str(deploy))
     args.output.parent.mkdir(parents=True, exist_ok=True)

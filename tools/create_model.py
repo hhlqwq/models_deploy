@@ -31,7 +31,7 @@ def create_model(
     for field_name, value in (("scenario", scenario), ("category", category)):
         if not value.replace("_", "").isalnum() or value.lower() != value:
             raise ValueError(f"{field_name} 只能包含小写字母、数字和下划线.")
-    target = PROJECT_ROOT / "models" / scenario / category / model_id
+    target = PROJECT_ROOT / "mtk_models" / scenario / category / model_id
     if target.exists():
         raise FileExistsError(f"模型目录已存在: {target}")
 

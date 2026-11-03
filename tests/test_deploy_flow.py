@@ -47,7 +47,7 @@ class DeployFlowTest(unittest.TestCase):
 
     def test_bev_formal_mini_manifest(self):
         """正式评价接受完整 mini_val,拒绝缺帧,重复帧及旧 trainval 清单."""
-        source = ROOT / "models/pointcloud/three_d_fusion/mit_bevfusion/deploy/board/evaluate.py"
+        source = ROOT / "mtk_models/pointcloud/three_d_fusion/mit_bevfusion/deploy/board/evaluate.py"
         tree = ast.parse(source.read_text(encoding="utf-8"))
         function = next(node for node in tree.body
                         if isinstance(node, ast.FunctionDef) and node.name == "validate_manifest")
@@ -72,7 +72,7 @@ class DeployFlowTest(unittest.TestCase):
         """执行真实入口,验证配置和命令行路径及两个后端的报告位置."""
         import argparse
 
-        entry = ROOT / "models/perception/object_detection/yolov8n/deploy/host/evaluate_onnx.py"
+        entry = ROOT / "mtk_models/perception/object_detection/yolov8n/deploy/host/evaluate_onnx.py"
         tree = ast.parse(entry.read_text(encoding="utf-8"))
         main = next(node for node in tree.body
                     if isinstance(node, ast.FunctionDef) and node.name == "main")
@@ -148,13 +148,13 @@ class DeployFlowTest(unittest.TestCase):
 
     def test_real_producer_expressions(self):
         """执行真实源码中的接口构造表达式,发现字段名和变量衔接错误."""
-        entry = (ROOT / "models/deploy/compile.sh").read_text(encoding="utf-8")
+        entry = (ROOT / "mtk_models/deploy/compile.sh").read_text(encoding="utf-8")
         models = re.search(r"MODELS=\(\n(.*?)\n\)", entry, re.S).group(1).split()
         generic = {"vit_base_patch16_224", "mobilefacenet", "rtmpose_body2d",
                    "depth_anything_v2_small", "fastsam", "whisper_tiny"}
         for model_path in models:
             model = model_path.rsplit("/", 1)[-1]
-            deploy = ROOT / "models" / model_path / "deploy"
+            deploy = ROOT / "mtk_models" / model_path / "deploy"
             for backend in ("host", "board"):
                 if model in ("minicpm5_2b", "deepseek_r1_distill_qwen_1_5b"):
                     source = ROOT / "tools/llm/evaluate_mmlu.py"
@@ -359,7 +359,7 @@ class DeployFlowTest(unittest.TestCase):
     def test_numeric_calls_have_explicit_sample_identity(self):
         """核对所有真实生产消费调用均显式提供样本标识和原始文件."""
         calls = 0
-        for folder in (ROOT / "models", ROOT / "tools"):
+        for folder in (ROOT / "mtk_models", ROOT / "tools"):
             for path in folder.rglob("*.py"):
                 tree = ast.parse(path.read_text(encoding="utf-8"))
                 for node in ast.walk(tree):
@@ -382,23 +382,23 @@ class DeployFlowTest(unittest.TestCase):
         shared = "tools/accuracy/evaluate_onnx.py"
         cases = [
             ("resnet101", "tools/prepare_output_reference.py", "classification", "record_reference",
-             "models/perception/image_classification/resnet101/deploy/board/infer.py", "main"),
+             "mtk_models/perception/image_classification/resnet101/deploy/board/infer.py", "main"),
             ("vit_base_patch16_224", "tools/prepare_output_reference.py", "classification", "record_reference",
-             "models/perception/image_classification/vit_base_patch16_224/deploy/board/infer.py", "main"),
+             "mtk_models/perception/image_classification/vit_base_patch16_224/deploy/board/infer.py", "main"),
             ("yolov5s", "tools/accuracy/yolov5s_val_coco.py", "build_fp32_infer", "record_reference",
              "tools/detection.py", "infer"),
-            ("yolov8n", "models/perception/object_detection/yolov8n/deploy/host/evaluate_onnx.py", "evaluate", "record_reference",
+            ("yolov8n", "mtk_models/perception/object_detection/yolov8n/deploy/host/evaluate_onnx.py", "evaluate", "record_reference",
              "tools/detection.py", "infer"),
             ("fastsam", shared, "evaluate_coco", "infer",
-             "models/navigation/segmentation/fastsam/deploy/board/infer.py", "main"),
+             "mtk_models/navigation/segmentation/fastsam/deploy/board/infer.py", "main"),
             ("mobilefacenet", shared, "evaluate_face", "infer", "tools/board.py", "infer_images"),
             ("depth_anything_v2_small", shared, "evaluate_depth", "infer", "tools/board.py", "infer_images"),
             ("rtmpose_body2d", shared, "evaluate_pose", "infer",
-             "models/interaction/pose_detection/rtmpose_body2d/deploy/board/infer.py", "main"),
-            ("yamnet", "models/audio/ambient_sound/yamnet/deploy/host/evaluate_onnx.py", "evaluate", "record_reference",
-             "models/audio/ambient_sound/yamnet/deploy/board/infer.py", "main"),
+             "mtk_models/interaction/pose_detection/rtmpose_body2d/deploy/board/infer.py", "main"),
+            ("yamnet", "mtk_models/audio/ambient_sound/yamnet/deploy/host/evaluate_onnx.py", "evaluate", "record_reference",
+             "mtk_models/audio/ambient_sound/yamnet/deploy/board/infer.py", "main"),
             ("whisper_tiny", shared, "evaluate_whisper", "infer",
-             "models/audio/stt/whisper_tiny/deploy/board/infer.py", "main"),
+             "mtk_models/audio/stt/whisper_tiny/deploy/board/infer.py", "main"),
         ]
         for model in ("minicpm5_2b", "deepseek_r1_distill_qwen_1_5b"):
             cases.append((model, "tools/prepare_output_reference.py", "language", "add",
@@ -497,7 +497,7 @@ class DeployFlowTest(unittest.TestCase):
                 validate_protocol(dict(protocol, **{key: value}))
         for model in ("minicpm5_2b", "deepseek_r1_distill_qwen_1_5b"):
             import yaml
-            config = yaml.safe_load((ROOT / "models/gen_ai/llm" / model / "config.yaml").read_text())
+            config = yaml.safe_load((ROOT / "mtk_models/gen_ai/llm" / model / "config.yaml").read_text())
             self.assertEqual(config["evaluation"]["mmlu_questions"], 1000)
             self.assertEqual(config["evaluation"]["mmlu_seed"], 17)
 
@@ -505,7 +505,7 @@ class DeployFlowTest(unittest.TestCase):
         """本模型清单覆盖当前帧、历史帧和相机,缺文件在传输前拒绝."""
         import importlib.util
 
-        source = ROOT / "models/pointcloud/three_d_fusion/mit_bevfusion/deploy/host/upload.py"
+        source = ROOT / "mtk_models/pointcloud/three_d_fusion/mit_bevfusion/deploy/host/upload.py"
         spec = importlib.util.spec_from_file_location("bev_inputs_test", source)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -536,7 +536,7 @@ class DeployFlowTest(unittest.TestCase):
         """执行真实 ViT 前处理和校准函数,验证类型、范围及每个像素值一致."""
         import cv2
 
-        model = ROOT / "models/perception/image_classification/vit_base_patch16_224/deploy"
+        model = ROOT / "mtk_models/perception/image_classification/vit_base_patch16_224/deploy"
         functions = {}
         for file, name in ((model / "board/infer.py", "floating_preprocess"),
                            (model / "host/convert_int8.py", "preprocess_image")):
@@ -594,10 +594,10 @@ class DeployFlowTest(unittest.TestCase):
     def make_shell_environment(self, host=False):
         """构造真实总入口的运行环境,所有远程命令和模型入口均为替身."""
         root = self.work / "flow"
-        deploy = root / "models/deploy" if host else root / "deploy"
+        deploy = root / "mtk_models/deploy" if host else root / "deploy"
         deploy.mkdir(parents=True)
         for name in ("compile.sh", "evaluate.sh", "compile_board.sh", "evaluate_board.sh", "common.sh"):
-            (deploy / name).write_bytes((ROOT / "models/deploy" / name).read_bytes())
+            (deploy / name).write_bytes((ROOT / "mtk_models/deploy" / name).read_bytes())
         entry = (deploy / "compile.sh").read_text()
         models = re.search(r"MODELS=\(\n(.*?)\n\)", entry, re.S).group(1).split()
         log = self.work / "calls.txt"
@@ -613,7 +613,7 @@ class DeployFlowTest(unittest.TestCase):
         local.write_text(f'MTK_RESULTS_HOST=test-only\nMTK_RESULTS_ROOT={root}/returned\nMTK_RESULTS_KEY={key}\n')
         environment = dict(os.environ, FLOW_LOG=str(log), PATH=str(commands) + ":" + os.environ["PATH"])
         for model in models:
-            folder = root / "models" / model / "deploy" if host else root / model.rsplit("/", 1)[-1]
+            folder = root / "mtk_models" / model / "deploy" if host else root / model.rsplit("/", 1)[-1]
             folder.mkdir(parents=True)
             for phase in ("compile", "evaluate"):
                 (folder / f"{phase}.sh").write_text(
@@ -677,7 +677,7 @@ class DeployFlowTest(unittest.TestCase):
         """四个总入口固定两端职责,没有运行位置猜测、自调用或隐藏回传参数."""
         expected = None
         for name in ("compile.sh", "evaluate.sh", "compile_board.sh", "evaluate_board.sh"):
-            source = (ROOT / "models/deploy" / name).read_text()
+            source = (ROOT / "mtk_models/deploy" / name).read_text()
             models = re.search(r"MODELS=\(\n(.*?)\n\)", source, re.S).group(1).split()
             if expected is None:
                 expected = models
@@ -757,8 +757,8 @@ class DeployFlowTest(unittest.TestCase):
 
     def test_full_entrypoints_upload_without_compile(self):
         """所有单模型全量入口自动上传参考,没有量化编译或数值参考采集命令."""
-        for path in (ROOT / "models").rglob("deploy/evaluate.sh"):
-            if path == ROOT / "models/deploy/evaluate.sh":
+        for path in (ROOT / "mtk_models").rglob("deploy/evaluate.sh"):
+            if path == ROOT / "mtk_models/deploy/evaluate.sh":
                 continue
             source = path.read_text(encoding="utf-8")
             host = source.split("\nelse\n", 1)[1]
@@ -970,7 +970,7 @@ class DeployFlowTest(unittest.TestCase):
 
     def test_yamnet_actual_metric_coverage(self):
         """实际音频评分函数与统一接口覆盖相同的折和可映射类别."""
-        source = ROOT / "models/audio/ambient_sound/yamnet/deploy/board/audio_utils.py"
+        source = ROOT / "mtk_models/audio/ambient_sound/yamnet/deploy/board/audio_utils.py"
         tree = ast.parse(source.read_text(encoding="utf-8"))
         functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)
                      and node.name in ("project_scores", "metrics", "evaluation_ids")]
@@ -991,7 +991,7 @@ class DeployFlowTest(unittest.TestCase):
         """实际上传函数保留空目录创建,不执行空 scp,缺文件仍在上传前失败."""
         import importlib.util
 
-        model = ROOT / "models/pointcloud/three_d_fusion/mit_bevfusion"
+        model = ROOT / "mtk_models/pointcloud/three_d_fusion/mit_bevfusion"
         source = model / "deploy/host/upload.py"
         spec = importlib.util.spec_from_file_location("bev_upload_test", source)
         uploader = importlib.util.module_from_spec(spec)
@@ -1035,7 +1035,7 @@ class DeployFlowTest(unittest.TestCase):
 
     def test_bev_identity_ignores_unused_graphs(self):
         """真实模型标识只包含契约所用图和协议,目录残留不能破坏两端匹配."""
-        source = ROOT / "models/pointcloud/three_d_fusion/mit_bevfusion/deploy/board/evaluate.py"
+        source = ROOT / "mtk_models/pointcloud/three_d_fusion/mit_bevfusion/deploy/board/evaluate.py"
         tree = ast.parse(source.read_text(encoding="utf-8"))
         function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "identity")
         namespace = {"Path": Path, "hashlib": hashlib, "json": json, "__file__": str(source)}

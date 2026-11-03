@@ -1,10 +1,10 @@
-# MTK Models
+# Models Deploy
 
 面向 MediaTek Genio 720 和 Genio 5100 的开源模型适配仓库,包含模型转换、量化、NPU 部署及精度和性能评价.模型必须来自作者或官方开源项目;Qualcomm AI Hub Models 仅作为目录和交付方式参考.
 
 - [MTK 模型部署 skill](.agents/skills/mtk-model-deploy/SKILL.md): 复用本仓库适配与独立评价流程.
-- [模型总览](models/README.md): 型号、输入、量化方式和已归档指标.
-- [编译环境](docs/environment.md)与 [Docker](docker/README.md): 工具链、依赖和容器配置.
+- [模型总览](mtk_models/README.md): 型号、输入、量化方式和已归档指标.
+- [编译环境](docs/environment.md)与 [Docker](docker/mtk/README.md): 工具链、依赖和容器配置.
 - [Genio 720 板端规范](docs/genio_720.md): 部署布局、运行要求和评价口径.
 - [YOLOv5s 学习文档](docs_study/Genio720_MT8189部署YOLOv5s总览.md): 分阶段理解完整部署链路.
 
@@ -15,29 +15,29 @@
 在 Ubuntu 编译主机的仓库根目录进入已有容器:
 
 ```bash
-bash docker/enter_container.sh
+bash docker/mtk/enter_container.sh
 ```
 
 在容器的仓库根目录执行所选模型入口,例如:
 
 ```bash
-bash models/perception/object_detection/yolov5s/deploy/compile.sh
+bash mtk_models/perception/object_detection/yolov5s/deploy/compile.sh
 ```
 
 需要顺序处理全部 13 个已有模型时,在容器中执行:
 
 ```bash
-bash models/deploy/compile.sh
+bash mtk_models/deploy/compile.sh
 ```
 
 总入口顺序调用全部模型已有入口.四个阶段依次执行:
 
-1. 编译服务器: `bash models/deploy/compile.sh`,完成各模型导出、量化、编译、部署和固定子集浮点精度评估,自动上传必要参考.
+1. 编译服务器: `bash mtk_models/deploy/compile.sh`,完成各模型导出、量化、编译、部署和固定子集浮点精度评估,自动上传必要参考.
 2. 板端部署根目录: `bash deploy/compile_board.sh`,完成相同子集 NPU 精度、精度损失、CosSim/RMSE/NRMSE 和示例,保存并回传 `results/summary_test.json` 与 `examples/output/`.
-3. 编译服务器: `bash models/deploy/evaluate.sh`,使用已有模型完成约定全量浮点评估,自动上传结果及必要评价输入,不重新量化或编译.
+3. 编译服务器: `bash mtk_models/deploy/evaluate.sh`,使用已有模型完成约定全量浮点评估,自动上传结果及必要评价输入,不重新量化或编译.
 4. 板端部署根目录: `bash deploy/evaluate_board.sh`,完成相同全量范围的 NPU 精度、精度损失、性能和峰值 RSS,保存 `results/summary.json`,最后自动回传两份已有报告及示例.
 
-四个总入口将标准输出和错误输出同时显示在终端并保存在本地日志.编译服务器保存为 `models/deploy/compile.log`、`models/deploy/evaluate.log`;板端保存为部署根目录下的 `deploy/compile.log`、`deploy/evaluate.log`.每次运行覆盖对应日志,日志开头标明日志文件.板端 evaluate 末尾的结果回传也保存在 evaluate.log,不会覆盖 compile.log.日志不存 NAS、不纳入 Git、不自动回传;流程失败保留原退出码,日志写入失败也返回失败.
+四个总入口将标准输出和错误输出同时显示在终端并保存在本地日志.编译服务器保存为 `mtk_models/deploy/compile.log`、`mtk_models/deploy/evaluate.log`;板端保存为部署根目录下的 `deploy/compile.log`、`deploy/evaluate.log`.每次运行覆盖对应日志,日志开头标明日志文件.板端 evaluate 末尾的结果回传也保存在 evaluate.log,不会覆盖 compile.log.日志不存 NAS、不纳入 Git、不自动回传;流程失败保留原退出码,日志写入失败也返回失败.
 
 两端均不混用子集和全量结果.普通模型数值对比最多选择 5 次输入;LLM 对比示例首个 Prefill 的有效输出,Whisper 对比 Encoder,BEVFusion 对比单帧各 NPU 子图.数值误差写入 summary_test.json,全量评价不采集输出张量或重复执行数值比较.
 
@@ -47,7 +47,7 @@ bash models/deploy/compile.sh
 
 评分、参考及模型版本不匹配时明确失败,不生成成功报告.主机上传不会自动执行板端推理;上传成功只能标记待板端检查.任务范围及接口说明见[输出误差与精度](docs/output_metrics.md).
 
-新建编译环境时使用 `docker/build_image.sh` 和 `docker/create_container.sh`,具体资源要求见 Docker 文档.运行模型时不自动下载权重、数据集或安装依赖.
+新建编译环境时使用 `docker/mtk/build_image.sh` 和 `docker/mtk/create_container.sh`,具体资源要求见 Docker 文档.运行模型时不自动下载权重、数据集或安装依赖.
 
 ## 存储规则
 
@@ -71,7 +71,7 @@ bash models/deploy/compile.sh
 
 ```text
 configs/             平台、工具链及本地存储配置模板
-models/              按场景和任务组织的模型适配
+mtk_models/          按场景和任务组织的 MTK 模型适配
 tools/               公共配置、转换、Python Runtime、评价及文件工具
 docker/              编译镜像与容器入口
 registry/            模型范围、来源索引与状态
@@ -86,8 +86,8 @@ tests/               公共代码回归测试
 
 ## 模型与结果
 
-[模型总览](models/README.md)是指标的统一索引.各模型 README 说明使用方式、当前结果和必要的协议限制;`results/summary.json` 保存机器可读汇总.不在首页重复模型指标、实验经过或逐次运行日志.
+[模型总览](mtk_models/README.md)是指标的统一索引.各模型 README 说明使用方式、当前结果和必要的协议限制;`results/summary.json` 保存机器可读汇总.不在首页重复模型指标、实验经过或逐次运行日志.
 
 精度比较须使用同一模型、输入和评价协议.全量、固定子集和功能示例分别标识,运行成功不等于精度合格.性能注明纯 NPU 或端到端范围,RSS 不等同于全部驱动内存.更换权重、量化配方或设备环境后须重新评价才能更新结论.
 
-原有 11 个已适配模型的 Python 推理代码已迁移,尚未进行板端验证.这些模型文档中的历史精度、性能、RSS 和示例不能作为新实现的验证结果.[ResNet101](models/perception/image_classification/resnet101/README.md)已完成 G720 Python NPU 全量精度、性能与 RSS 评价,同协议 ONNX 参考已核对,当前结果见模型总览和报告.
+原有 11 个已适配模型的 Python 推理代码已迁移,尚未进行板端验证.这些模型文档中的历史精度、性能、RSS 和示例不能作为新实现的验证结果.[ResNet101](mtk_models/perception/image_classification/resnet101/README.md)已完成 G720 Python NPU 全量精度、性能与 RSS 评价,同协议 ONNX 参考已核对,当前结果见模型总览和报告.

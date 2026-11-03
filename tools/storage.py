@@ -70,9 +70,9 @@ def storage_roots():
 
 def model_storage(model_directory):
     """按模型的场景、类别、名称映射到外部资源目录."""
-    relative = Path(model_directory).resolve().relative_to(REPO_ROOT / "models")
+    relative = Path(model_directory).resolve().relative_to(REPO_ROOT / "mtk_models")
     if len(relative.parts) != 3:
-        raise ValueError("模型代码目录必须为 models/场景/类别/模型名.")
+        raise ValueError("模型代码目录必须为 mtk_models/场景/类别/模型名.")
     return storage_roots()["models_root"] / relative
 
 
