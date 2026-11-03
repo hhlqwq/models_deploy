@@ -1,0 +1,16 @@
+# S100 公开配置模板,连接与资源路径只写入 s100.local.yaml.
+id: s100
+name: D-Robotics RDK S100
+march: nash-e
+board:
+    host: ""
+    user: root
+    work_dir: ""
+toolchain:
+    root: ""
+    image: ""
+    container_name: ""
+    version: ""
+storage:
+    models_root: ""
+    dataset_root: ""

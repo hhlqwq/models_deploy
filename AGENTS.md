@@ -2,9 +2,9 @@
 
 ## 项目说明
 
-本项目 models_deploy 面向 MTK Genio 720 和 G5100,对开源模型进行兼容性修改、转换、量化、部署与板端验证；模型交付结构、文档完整度和结果展示方式参考 Qualcomm Hugging Face Models,但不使用 Qualcomm 模型作为移植源.
+本项目 models_deploy 面向 MTK Genio 720、G5100 和地瓜 RDK S100,对开源模型进行兼容性修改、转换、量化、部署与板端验证;模型交付结构、文档完整度和结果展示方式参考 Qualcomm Hugging Face Models,但不使用 Qualcomm 模型作为移植源.
 
-MTK 实现位于 mtk_models/,编译环境位于 docker/mtk/.旧 MTK skill 中的顶层 models/ 路径按 mtk_models/ 理解,模型内部资源包 models/ 不改名.
+MTK 实现位于 mtk_models/,RDK 实现位于 rdk_models/.两者独立维护导出、量化、编译和板端 Runtime;Docker 分别位于 docker/mtk/ 和 docker/s100/.平台连接信息与内部资源路径仅放本地配置.旧 MTK skill 中的顶层 models/ 路径按 mtk_models/ 理解,模型内部资源包 models/ 不改名;报告要求冲突时以本文件和用户最新指令为准.
 
 ## 工作规范
 
@@ -23,7 +23,7 @@ MTK 实现位于 mtk_models/,编译环境位于 docker/mtk/.旧 MTK skill 中的
 
 ## 测试环境
 
-测试必须在开发板执行.SoC: MT8189 / Genio 720
+测试必须在对应开发板执行.MTK 目标为 MT8189 / Genio 720,RDK 目标为 S100 / nash-e,不得混用编译产物与实测结果.
 测试目录由本地平台配置指定.
 如果板端缺少什么资源或者内部的系统资源是旧版本导致的可以升级开发板的系统或者文件(允许官网最新的系统移植)
 
@@ -34,7 +34,7 @@ MTK 实现位于 mtk_models/,编译环境位于 docker/mtk/.旧 MTK skill 中的
 
 ## 全部模型的统一交付方式
 
-- 推理、前后处理、精度评价和性能统计统一使用 Python,通过 Python 调用 MTK SDK 动态库执行 NPU 推理,不再维护仓库自己的 C++ 推理程序.已有 C++ 实现逐模型迁移,未迁移前如实标记,不宣称已完成 Python 化.
+- 推理、前后处理、精度评价和性能统计统一使用 Python,通过对应平台官方 Python 接口或 SDK 动态库执行 NPU/BPU 推理,不再维护仓库自己的 C++ 推理程序.已有 C++ 实现逐模型迁移,未迁移前如实标记,不宣称已完成 Python 化.
 - 已有和后续新增模型只提供 `deploy/compile.sh` 与 `deploy/evaluate.sh` 两个主要入口,不保留旧 `run.sh` 兼容入口.
 - `compile.sh` 负责转换、量化、编译、部署和少量板端通路检查,只打印关键步骤并保存 README 所需示例,不生成精度、性能或峰值 RSS 报告.
 - 入口直接顺序调用命令,只补充必要阶段提示,工具输出和错误直接显示在终端.不默认增加日志文件、包装函数或额外管理机制.

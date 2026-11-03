@@ -148,3 +148,8 @@ docs/*.xlsx
 *.egg-info/
 /build/
 /dist/
+
+# RDK 编译产物及本地设备记录.
+*.hbm
+configs/platforms/*.local.known_hosts
+rdk_models/deploy/platform.local.sh
