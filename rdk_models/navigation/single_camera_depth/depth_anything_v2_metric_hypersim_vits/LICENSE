@@ -1,0 +1,7 @@
+本目录适配代码遵循仓库根目录 LICENSE.
+
+作者模型和权重的许可应以对应官方固定版本及模型发布页为准:
+https://github.com/DepthAnything/Depth-Anything-V2/blob/a561b849ebae10a6f5ef49e26c83cbbcd36c71bf/LICENSE
+https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Small
+
+官方源码许可已随源码归档到 NAS 工具目录.已有权重的发布一致性与许可归档尚待核实,本文件不额外授予权重、数据集或厂商 SDK 的使用权.

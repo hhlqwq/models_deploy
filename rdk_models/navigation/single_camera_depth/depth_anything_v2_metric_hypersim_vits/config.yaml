@@ -1,0 +1,36 @@
+# S100 室内米制深度模型,实际 NAS 根路径由本地平台配置提供.
+platform: s100
+model:
+    resource_directory: vision/depth_anything_v2
+    weights: original/depth_anything_v2_metric_hypersim_vits.pth
+    encoder: vits
+    features: 64
+    out_channels: [48, 96, 192, 384]
+    max_depth: 20.0
+    depth_unit: m
+    source_url: https://github.com/DepthAnything/Depth-Anything-V2
+    source_revision: a561b849ebae10a6f5ef49e26c83cbbcd36c71bf
+    source_directory: Depth-Anything-V2-a561b849ebae/metric_depth
+export:
+    ir_version: 9
+    opset_version: 17
+    # NYU 原图为 480x640,与官方 lower_bound=518 的尺寸取整一致.
+    input_shape: [1, 3, 518, 686]
+    layout: NCHW
+    dtype: float32
+quantization:
+    node_policy: set_all_nodes_int16
+    calibration_samples: 100
+    seed: 17
+evaluation:
+    dataset: NYU_Depth_V2
+    labeled_file: nyu_depth_v2_labeled.mat
+    split_file: splits.mat
+    protocol: nyu_654_eigen_crop_metric_no_scale_alignment
+    min_depth: 0.001
+    max_depth: 10.0
+    crop: [45, 471, 41, 601]
+    warmup: 10
+    iterations: 100
+board:
+    deploy_directory: depth_anything_v2_metric_hypersim_vits
