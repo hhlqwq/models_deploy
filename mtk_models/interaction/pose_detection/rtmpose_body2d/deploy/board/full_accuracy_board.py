@@ -18,7 +18,7 @@ from tools.board import configure_parser
 from tools.evaluation import (
     is_test, pose_image_ids, result_status, scope_metadata,
 )
-from tools.evaluation import accuracy_result, record_selection
+from tools.evaluation import accuracy_result
 
 SIGMAS = np.asarray([
     0.026, 0.025, 0.025, 0.035, 0.035, 0.079, 0.079, 0.072, 0.072,
@@ -150,16 +150,17 @@ def evaluate(args: argparse.Namespace, backend: str = "python_neuron_runtime_hw"
     if SIGMAS.shape != (133,):
         raise RuntimeError(f"WholeBody sigma 数量错误: {SIGMAS.shape}")
     grouped = load_predictions(args.predictions, backend)
-    image_ids = None
-    if is_test():
-        path = args.annotations.parent.parent / "person_detection_results/COCO_val2017_detections_AP_H_56_person.json"
-        detections = json.loads(path.read_text(encoding="utf-8"))
-        image_ids = pose_image_ids(detections)
-        selected = set(image_ids)
-        expected = {index for index, row in enumerate(detections) if row["image_id"] in selected}
-        actual = {int(row["detection_id"]) for rows in grouped.values() for row in rows}
-        if set(grouped) != set(image_ids) or actual != expected:
-            raise ValueError("姿态子集必须覆盖选定整图的全部人体框.")
+    path = args.annotations.parent.parent / "person_detection_results/COCO_val2017_detections_AP_H_56_person.json"
+    detections = json.loads(path.read_text(encoding="utf-8"))
+    selected = set(pose_image_ids(detections))
+    expected = {index: int(row["image_id"]) for index, row in enumerate(detections)
+                if int(row["image_id"]) in selected}
+    actual = {int(row["detection_id"]): int(row["image_id"])
+              for rows in grouped.values() for row in rows}
+    if set(grouped) != selected or actual != expected:
+        raise ValueError("姿态预测必须覆盖约定评价图片的全部人体框,且 detection_id 与 image_id 一致.")
+    # 全量保持对完整标注评分,子集仅评价选定图片;集合标识由本进程独立生成.
+    image_ids = sorted(selected) if is_test() else None
     results = format_results(grouped)
     args.formatted.parent.mkdir(parents=True, exist_ok=True)
     args.formatted.write_text(

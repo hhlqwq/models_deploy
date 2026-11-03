@@ -2,8 +2,12 @@
 
 import argparse
 import ast
+import contextlib
+import io
+import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -12,6 +16,50 @@ from tools import evaluation
 
 class EvaluationTest(unittest.TestCase):
     """不加载模型,覆盖主机与板端共用的样本规则."""
+
+    def test_pose_scoring_independent_selection(self):
+        """独立评分须重建集合,两后端及两范围均拒绝缺框和错误图片映射."""
+        source = Path(__file__).resolve().parents[1] / (
+            "mtk_models/interaction/pose_detection/rtmpose_body2d/deploy/board/full_accuracy_board.py")
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        function = next(node for node in tree.body
+                        if isinstance(node, ast.FunctionDef) and node.name == "evaluate")
+        detections = [{"image_id": index // 20 + 1} for index in range(600)]
+        for scope in ("full", "subset"):
+            os.environ["MTK_EVAL_SCOPE"] = scope
+            selected = set(evaluation.pose_image_ids(detections))
+            expected_digest = os.environ["MTK_EVAL_SAMPLE_SHA256"]
+            grouped = {image: [{"detection_id": index, "image_id": image}
+                               for index, row in enumerate(detections) if row["image_id"] == image]
+                       for image in selected}
+            for backend in ("python_neuron_runtime_hw", "onnxruntime"):
+                with self.subTest(scope=scope, backend=backend):
+                    args = argparse.Namespace(annotations=mock.MagicMock(), predictions=mock.Mock(),
+                                              formatted=mock.MagicMock(), metrics=mock.Mock())
+                    path = args.annotations.parent.parent.__truediv__.return_value
+                    path.read_text.return_value = json.dumps(detections)
+                    namespace = dict(argparse=argparse, json=json, contextlib=contextlib, io=io,
+                        SIGMAS=SimpleNamespace(shape=(133,)), load_predictions=mock.Mock(return_value=grouped),
+                        is_test=evaluation.is_test, pose_image_ids=evaluation.pose_image_ids,
+                        format_results=mock.Mock(return_value=[]), COCO=mock.Mock(),
+                        evaluate_component=mock.Mock(return_value={"AP": 0.5}),
+                        accuracy_result=evaluation.accuracy_result, result_status=evaluation.result_status,
+                        scope_metadata=evaluation.scope_metadata)
+                    exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), "exec"), namespace)
+                    os.environ.pop("MTK_EVAL_SAMPLE_SHA256", None)
+                    namespace["evaluate"](args, backend)
+                    report = json.loads(args.metrics.write_text.call_args.args[0])
+                    self.assertEqual(report["evaluation"]["samples"]["selection_id"], expected_digest)
+                    self.assertEqual(report["evaluation"]["samples"]["count"], sum(map(len, grouped.values())))
+                    image = min(grouped)
+                    missing = {key: list(rows) for key, rows in grouped.items()}
+                    missing[image] = missing[image][1:]
+                    wrong = {key: [dict(row) for row in rows] for key, rows in grouped.items()}
+                    wrong[image][0]["image_id"] = -1
+                    for broken in (missing, wrong):
+                        namespace["load_predictions"].return_value = broken
+                        with self.assertRaises(ValueError):
+                            namespace["evaluate"](args, backend)
 
     def setUp(self):
         """隔离每项测试的模式及样本指纹."""
