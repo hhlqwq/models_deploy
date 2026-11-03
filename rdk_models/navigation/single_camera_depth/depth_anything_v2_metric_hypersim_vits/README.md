@@ -13,11 +13,25 @@
 与 MTK 目录下 depth_anything_v2_small 的相对深度版本分开维护,不得复用其 DA-2K 历史结果作为米制深度评价.
 校准使用 NYU Depth V2 标准训练划分中 seed=17 选取的 100 张图像,正式评价使用互斥的标准测试划分 654 张.使用米制真值、固定裁剪与有效深度范围,不进行逐图尺度对齐,契约见 [模型卡](model_card.md).
 
-当前状态: 2026-11-03 已导出 depth_anything_v2_metric_hypersim_vits.onnx,IR=9,opset=17,文件 99,652,380 字节.静态图改写检查和 ONNX checker 已通过,保存后重新读取确认输入 [1,3,518,686]、输出 [1,518,686].尚未运行 ONNX 单图脚本、量化、编译或板端推理,无真实精度、性能或 RSS 报告.
+当前状态: 2026-11-03 已导出 depth_anything_v2_metric_hypersim_vits.onnx,IR=9,opset=17,文件 99,652,380 字节.静态图改写检查和 ONNX checker 已通过,保存后重新读取确认输入 [1,3,518,686]、输出 [1,518,686].已在编译主机完成独立单文件 ONNX CPU 单图推理;量化、编译、板端推理及正式精度评价尚未执行.
 
 ## 单张 RGB 图片推理
 
 在具备 NumPy、OpenCV、ONNX Runtime 的 Python 环境中执行:
+
+infer_onnx.py 是自包含文件,不导入仓库其他文件、不读取 YAML 或本地配置.已将该文件放到 NAS ONNX 旁边,交给测试者时只需提供这两个文件.示例依赖安装命令:
+
+```bash
+python -m pip install "numpy<2" "opencv-python<4.12" "onnxruntime==1.19.0"
+```
+
+复制到独立目录后执行:
+
+```bash
+python infer_onnx.py --model depth_anything_v2_metric_hypersim_vits.onnx --image rgb.jpg --output-dir output
+```
+
+在仓库中也可执行:
 
 ```bash
 MODEL_DIR=rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim_vits
@@ -36,6 +50,8 @@ python "$MODEL_DIR/deploy/host/export.py"
 ```
 
 IR 是模型容器格式版本,opset 是算子集版本,本模型分别设置为 9 与 17.仅对导出器生成的不高于目标 IR 的图提升版本,不通过直接改数字强行降级高版本图.
+
+本次验证仅复制独立脚本与已有室内客厅图片到日期临时目录,在没有仓库 Python 路径和配置的环境中执行一次 CPU 推理.实际环境为 NumPy 1.23.0、OpenCV 4.11.0、ONNX Runtime 1.19.0.输出 FP32 深度为 [1362,2048],与原图同尺寸,全部数值有限,范围为 0.663-9.801 米.像素 (1300,920) 估计 2.802 米,手工电视屏幕区域 [560:760,450:570] 的深度中位数为 4.976 米.图片没有真实米制标注,这些数字只证明输出通路和区域取值已运行,不能据此判断测距误差.
 
 ## 数据准备
 

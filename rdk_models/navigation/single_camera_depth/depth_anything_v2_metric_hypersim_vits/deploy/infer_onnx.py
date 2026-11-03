@@ -9,23 +9,42 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 
-from model import preprocess, restore_depth
+def preprocess(image, shape):
+    """独立完成 RGB 缩放、ImageNet 归一化和 FP32 NCHW 排列."""
+    height, width = shape[-2:]
+    resized = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)
+    values = resized.astype(np.float32) / 255.0
+    mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+    std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+    return np.ascontiguousarray(((values - mean) / std).transpose(2, 0, 1)[None])
+
+
+def restore_depth(depth, height, width):
+    """独立实现 align_corners=True 双线性插值,恢复原图深度尺寸."""
+    depth = np.asarray(depth, dtype=np.float32)
+    if depth.ndim != 2:
+        raise ValueError(f"模型深度必须为二维数组: {depth.shape}")
+    y = np.linspace(0, depth.shape[0] - 1, height, dtype=np.float32)
+    x = np.linspace(0, depth.shape[1] - 1, width, dtype=np.float32)
+    y0, x0 = y.astype(np.int64), x.astype(np.int64)
+    y1 = np.minimum(y0 + 1, depth.shape[0] - 1)
+    x1 = np.minimum(x0 + 1, depth.shape[1] - 1)
+    wy, wx = (y - y0)[:, None], (x - x0)[None, :]
+    top = depth[y0[:, None], x0] * (1 - wx) + depth[y0[:, None], x1] * wx
+    bottom = depth[y1[:, None], x0] * (1 - wx) + depth[y1[:, None], x1] * wx
+    return (top * (1 - wy) + bottom * wy).astype(np.float32)
 
 
 def main():
     """执行一次 ONNX 推理,保存原始深度和带米制标注的可视化."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image", type=Path, required=True, help="输入彩色图片")
-    parser.add_argument("--model", type=Path, help="ONNX 路径,默认读取本模型本地配置")
+    parser.add_argument("--model", type=Path, required=True, help="独立 ONNX 模型文件路径")
     parser.add_argument("--output-dir", type=Path, help="输出目录,默认使用日期临时目录")
     parser.add_argument("--point", type=int, nargs=2, metavar=("X", "Y"), help="原图像素坐标,默认中心")
     parser.add_argument("--roi", type=int, nargs=4, metavar=("X1", "Y1", "X2", "Y2"),
                         help="手工指定原图区域,统计其有效深度中位数,右下边界不包含")
     args = parser.parse_args()
-    if args.model is None:
-        sys.path.insert(0, str(Path(__file__).resolve().parent / "host"))
-        from context import context
-        args.model = context().output / "depth_anything_v2_metric_hypersim_vits.onnx"
     image = cv2.imread(str(args.image), cv2.IMREAD_COLOR)
     if image is None:
         raise ValueError(f"输入图片不可读: {args.image}")
@@ -39,7 +58,11 @@ def main():
         if not (0 <= x1 < x2 <= width and 0 <= y1 < y2 <= height):
             raise ValueError("ROI 必须为原图内有效的左上与右下坐标.")
     print("[1/3] 加载已有 ONNX,仅使用 CPUExecutionProvider.", flush=True)
-    session = ort.InferenceSession(str(args.model), providers=["CPUExecutionProvider"])
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 4
+    options.inter_op_num_threads = 1
+    session = ort.InferenceSession(str(args.model), sess_options=options,
+                                   providers=["CPUExecutionProvider"])
     inputs, outputs = session.get_inputs(), session.get_outputs()
     if (len(inputs) != 1 or inputs[0].name != "image"
             or inputs[0].type != "tensor(float)" or inputs[0].shape != [1, 3, 518, 686]
