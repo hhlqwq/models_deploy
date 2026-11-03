@@ -2,6 +2,10 @@
 # 使用本地已有官方工具链镜像创建独立容器,不下载或安装资源.
 set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if [[ "$(id -u)" == 0 ]]; then
+    echo "[错误] 请用宿主机普通用户创建容器,不要使用 sudo bash." >&2
+    exit 1
+fi
 RDK_ENVIRONMENT="$(python3 "${PROJECT_ROOT}/tools/rdk_config.py")"
 eval "${RDK_ENVIRONMENT}"
 echo "[S100 1/3] 检查已有镜像与 NAS 挂载."
@@ -18,7 +22,8 @@ docker run --detach --pull never \
     --entrypoint /bin/bash \
     --gpus all \
     --user "$(id -u):$(id -g)" \
-    --env HOME=/tmp \
+    --env HOME="/home/rdk_$(id -u)" \
+    --env XDG_CACHE_HOME="/home/rdk_$(id -u)/.cache" \
     --env PYTHONDONTWRITEBYTECODE=1 \
     --env PYTHONUNBUFFERED=1 \
     --env PYTHONPATH="${PROJECT_ROOT}" \
@@ -29,4 +34,6 @@ docker run --detach --pull never \
     --volume "${RDK_TOOLCHAIN_ROOT}:${RDK_TOOLCHAIN_ROOT}:ro" \
     --workdir "${PROJECT_ROOT}" \
     "${RDK_IMAGE}" -c 'exec sleep infinity'
-echo "[S100 3/3] 容器已创建,使用 docker/rdk_s100/enter_container.sh 进入."
+echo "[S100 3/3] 初始化容器普通用户."
+source "${PROJECT_ROOT}/docker/rdk_s100/user.sh"
+echo "[S100] 容器已创建,使用 docker/rdk_s100/enter_container.sh 进入."
