@@ -9,7 +9,7 @@ MTK 与 RDK 各自维护模型导出、量化、编译及 Python 板端推理.�
 | MTK | [mtk_models](mtk_models/README.md) | [docker/mtk](docker/mtk/README.md) | configs/platforms/genio_720.yaml |
 | RDK S100 | [rdk_models](rdk_models/README.md) | [docker/s100](docker/s100/README.md) | configs/platforms/s100.yaml |
 
-S100 首个模型为 [Depth Anything V2 Metric Hypersim ViT-S](rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim_vits/README.md),用于室内米制深度估计.FP32 ONNX 已导出为 IR9/opset17,提供单张 RGB 图片推理脚本.量化、编译、板端推理和正式评价尚未执行,这些环节的代码为待验证实现.
+S100 首个模型为 [Depth Anything V2 Metric Hypersim ViT-S](rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim_vits/README.md),用于室内米制深度估计.FP32 ONNX 已导出为 IR9/opset17,独立单文件 CPU 单图推理已验证.100 张校准、HBM 编译和三样本运行包上传已完成;板端小批量和正式评价待执行.NYU 日常数据已整理为 RGB PNG 与米制 FP32 NPY,原始 MAT 仅归档.
 
 每模型的目标入口为 deploy/compile.sh 和 deploy/evaluate.sh.前者负责转换、量化、编译、部署和少量通路检查并保存示例;后者独立使用已有产物评价精度、性能与进程峰值 RSS,结果仅保存一个 results/summary.json.已有 MTK 实现仍含历史双报告行为,本次目录迁移没有改写这些流程或历史指标.
 

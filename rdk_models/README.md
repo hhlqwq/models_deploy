@@ -5,7 +5,7 @@
 
 | 模型 | 平台 | 状态 |
 | --- | --- | --- |
-| [Depth Anything V2 Metric Hypersim ViT-S](navigation/single_camera_depth/depth_anything_v2_metric_hypersim_vits/README.md) | S100 / nash-e | FP32 ONNX 已导出,IR9/opset17;单图脚本已提供,量化和板端验证待完成 |
+| [Depth Anything V2 Metric Hypersim ViT-S](navigation/single_camera_depth/depth_anything_v2_metric_hypersim_vits/README.md) | S100 / nash-e | ONNX 单图验证、100 张校准与 HBM 编译上传已完成;板端三样本验证待执行 |
 
 每模型只提供 deploy/compile.sh 与 deploy/evaluate.sh 两个主要入口.文件存在不代表已通过编译或板端验证.
 compile 仅进行转换、量化、编译、部署与少量通路检查并保存示例;evaluate 独立使用已有模型完成精度、性能和进程峰值 RSS.

@@ -13,7 +13,9 @@
 与 MTK 目录下 depth_anything_v2_small 的相对深度版本分开维护,不得复用其 DA-2K 历史结果作为米制深度评价.
 校准使用 NYU Depth V2 标准训练划分中 seed=17 选取的 100 张图像,正式评价使用互斥的标准测试划分 654 张.使用米制真值、固定裁剪与有效深度范围,不进行逐图尺度对齐,契约见 [模型卡](model_card.md).
 
-当前状态: 2026-11-03 已导出 depth_anything_v2_metric_hypersim_vits.onnx,IR=9,opset=17,文件 99,652,380 字节.静态图改写检查和 ONNX checker 已通过,保存后重新读取确认输入 [1,3,518,686]、输出 [1,518,686].已在编译主机完成独立单文件 ONNX CPU 单图推理;量化、编译、板端推理及正式精度评价尚未执行.
+当前状态: 2026-11-03 已导出 depth_anything_v2_metric_hypersim_vits.onnx,IR=9,opset=17,文件 99,652,380 字节.静态图改写检查、ONNX checker 和独立单文件 CPU 单图推理已完成.已完成 100 张训练样本校准与 HBM 编译,输入 [1,3,518,686]、输出 [1,518,686] 均为 FP32;运行包已上传,板端小批量验证仍待完成,未进行正式精度评价.
+HBM 文件为 build/depth_anything_v2_metric_hypersim_vits.hbm,大小 129,165,096 字节.首次完整入口在打包目录未创建处失败,已修复并仅重跑打包上传成功,没有重复整套编译.
+SDK 仿真校验样本的 metric_depth 量化余弦相似度为 0.999929,不能代替 NYU 任务精度.编译器将部分 Resize 标记为 BPU+CPU,当前 HBM 包含混合执行环节,不宣称全算子纯 BPU.
 
 ## 单张 RGB 图片推理
 
@@ -58,16 +60,26 @@ IR 是模型容器格式版本,opset 是算子集版本,本模型分别设置为
 在本地 dataset_root 对应的 NAS 公共数据集目录下放入:
 
 ```text
-NYU_Depth_V2/
-    nyu_depth_v2_labeled.mat
-    splits.mat
+NYU_depth_v2/
+    original/                # 官方下载文件仅作来源归档
+        nyu_depth_v2_labeled.mat
+        splits.mat
+    train/
+        indices.txt          # 官方 795 张样本编号和顺序
+        rgb/                 # 0001.png 等 RGB 图片
+        depth/               # 同编号 FP32 NPY,单位米
+    test/
+        indices.txt          # 官方 654 张样本编号和顺序
+        rgb/
+        depth/
 ```
 
 - 标注数据约 2.8 GB: https://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/nyu_depth_v2_labeled.mat
 - 标准划分: http://horatio.cs.nyu.edu/mit/silberman/indoor_seg_sup/splits.mat
 - 官方说明: https://cs.nyu.edu/~fergus/datasets/nyu_depth_v2.html
 
-保留原始 MAT,代码按需读取 RGB 和 depths,无需重复生成完整图片与深度副本.不需要下载 Raw 428 GB 数据.
+首次下载文件放在数据集根目录,使用 `tools/prepare_nyu_depth_v2.py --dataset-dir /path/to/NYU_depth_v2` 一次性整理.该步骤需要 h5py 和 SciPy,逐张核对 RGB/深度数值无损后才将两个 MAT 移到 original/,不覆盖冲突文件.不需要下载 Raw 428 GB 数据.
+日常校准、推理和评价仅读取 RGB PNG、米制 FP32 NPY 及样本索引,不再读取 MAT,不依赖 h5py 或 SciPy.数据整理需要对这个数据集目录的可写挂载,日常编译和评价继续只读挂载.
 
 ## 编译与部署
 
@@ -80,11 +92,14 @@ bash rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim
 主机顺序执行导出、校准、量化编译和上传,错误直接显示,不自动运行板端推理.输入为 FP32 RGB [1,3,518,686],模型输出为 FP32 米制深度 [1,518,686].
 INT16 节点策略不等于已核实每层实际位宽;最终以真实编译结果和板端元数据为准.
 
-登录 S100 的模型部署目录后执行 `bash compile.sh`,只做三个固定示例的通路检查并保存并排输入与深度图,不生成精度、性能或 RSS 报告.
+主机额外计算标准 test 前三个固定样本的 ONNX 输出,将输入图片、米制真值和浮点输出打包上传.训练校准图片与这三个测试样本互斥.
+
+登录 S100 的模型部署目录后执行 `bash compile.sh`,完成相同三个样本的 BPU 推理、数值对照和示例.终端打印逐样本 CosSim、RMSE、NRMSE,以及三个样本的 ONNX/BPU 深度指标均值和差值;NRMSE 的分母为浮点输出的均方根.不把这三个样本当作正式精度,不生成精度、性能或 RSS 报告.
+小批量真值与参考以一个 NPZ 保存,板端 compile 无需完整 NYU MAT 或 h5py.结果图保存在 examples/output/.
 
 ## 正式评价
 
-主机执行同目录 `deploy/evaluate.sh`,只使用已有 ONNX/HBM 生成同协议参考并上传原始数据与摘要,不重新量化或编译.首次上传包含约 2.8 GB MAT,提前确认板端磁盘空间.随后在板端模型部署目录执行 `bash evaluate.sh`.
+主机执行同目录 `deploy/evaluate.sh`,只使用已有 ONNX/HBM 生成同协议参考并上传 test 的 RGB PNG、FP32 NPY、索引和参考摘要,不上传训练集或 MAT,不重新量化或编译.随后在板端模型部署目录执行 `bash evaluate.sh`.
 
-板端需要 hbm_runtime、NumPy、OpenCV、SciPy、h5py.新增依赖安装包统一从 NAS tools/wheels 准备,不在模型入口在线安装.当前板端 h5py 尚未安装.
+板端环境需要 hbm_runtime、NumPy 和 OpenCV.新增依赖安装包统一从 NAS tools/wheels 准备,不在模型入口在线安装.板端编译小批量和正式评价均不需要 h5py 或 SciPy.
 正式结果只写 results/summary.json,不生成逐样本深度文件、额外报告或日志副本.报告区分 Runtime 调用和端到端耗时,纯 BPU 设备计时缺失时状态保持 partial.

@@ -6,6 +6,8 @@ import sys
 from time import monotonic
 
 import cv2
+import numpy as np
+import onnxruntime as ort
 
 from context import context
 
@@ -38,7 +40,8 @@ def upload(ctx, files):
                         sftp.stat(folder)
                     except FileNotFoundError:
                         sftp.mkdir(folder)
-                print(f"[上传 {index}/{len(files)}] {relative}", flush=True)
+                if len(files) <= 20 or index % 25 == 0 or index == len(files):
+                    print(f"[上传 {index}/{len(files)}] {relative}", flush=True)
                 last_progress = [monotonic()]
 
                 def progress(sent, total):
@@ -58,7 +61,7 @@ def main():
     """准备精简配置与三个固定示例,上传 HBM 和 Python 运行代码."""
     ctx = context()
     sys.path.insert(0, str(ctx.model / "deploy"))
-    from model import NYUDataset, fingerprint, save_json
+    from model import NYUDataset, fingerprint, preprocess, save_json
 
     artifacts = list((ctx.output / "build").glob("*.hbm"))
     if len(artifacts) != 1 or artifacts[0].stat().st_size == 0:
@@ -68,14 +71,14 @@ def main():
         "artifact": "depth_anything_v2_metric_hypersim_vits.hbm",
         "model": ctx.config["model"], "export": ctx.config["export"],
         "evaluation": ctx.config["evaluation"], "quantization": ctx.config["quantization"],
-        "dataset_directory": "datasets/NYU_Depth_V2",
+        "dataset_directory": "datasets/" + ctx.config["evaluation"]["dataset"],
         "identity": {
             "hbm_sha256": fingerprint(artifact),
             "onnx_sha256": fingerprint(ctx.output / "depth_anything_v2_metric_hypersim_vits.onnx"),
         },
     }
     package = ctx.work / "package"
-    save_json(package / "config.json", config)
+    package.mkdir(parents=True, exist_ok=True)
     files = [(artifact, config["artifact"]), (package / "config.json", "config.json")]
     deploy = ctx.model / "deploy"
     for name in ("compile.sh", "evaluate.sh", "model.py"):
@@ -83,15 +86,31 @@ def main():
     for path in (deploy / "board").glob("*.py"):
         files.append((path, "board/" + path.name))
     dataset = NYUDataset(ctx.dataset, config["evaluation"])
+    session = ort.InferenceSession(
+        str(ctx.output / "depth_anything_v2_metric_hypersim_vits.onnx"),
+        providers=["CPUExecutionProvider"])
+    predictions, truths = [], []
+    config["compile_sample_ids"] = [int(index) + 1 for index in dataset.test[:3]]
     try:
         for index in dataset.test[:3]:
-            image, _ = dataset.read(int(index))
+            image, truth = dataset.read(int(index))
             path = package / f"sample_{int(index) + 1:04d}.png"
             if not cv2.imwrite(str(path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR)):
                 raise OSError("固定示例输入保存失败.")
             files.append((path, "examples/input/" + path.name))
+            tensor = preprocess(image, ctx.config["export"]["input_shape"])
+            predictions.append(session.run(["metric_depth"], {"image": tensor})[0][0])
+            truths.append(truth)
+            print(f"[小批量参考] NYU {int(index) + 1},完成 ONNX 输出.", flush=True)
     finally:
         dataset.close()
+    reference = package / "compile_reference.npz"
+    np.savez_compressed(reference, ids=np.array(config["compile_sample_ids"]),
+                        depth=np.stack(predictions), truth=np.stack(truths))
+    config["compile_reference_sha256"] = fingerprint(reference)
+    config["compile_reference"] = "build/reference/compile_reference.npz"
+    save_json(package / "config.json", config)
+    files.append((reference, config["compile_reference"]))
     upload(ctx, files)
     print("[编译部署完成] 请登录 S100,在本模型部署目录执行 bash compile.sh.", flush=True)
 
