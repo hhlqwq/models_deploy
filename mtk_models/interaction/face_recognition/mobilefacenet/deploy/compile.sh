@@ -19,7 +19,7 @@ if [[ -f "${SCRIPT_DIR}/config.json" ]]; then
     python3 "${SCRIPT_DIR}/board/render_examples.py"
     echo "[编译完成] 通路和示例已准备,子集精度和损失已保存至 results/summary_test.json,全量 summary.json 未改写."
 else
-    : "${MTK_MODELS_ROOT:?请先通过 docker/mtk/enter_container.sh 进入容器}"
+    : "${MTK_MODELS_ROOT:?请先通过 docker/mtk_g720/enter_container.sh 进入容器}"
     echo "[容器 1/4] 导出 FP32 ONNX."
     python "${SCRIPT_DIR}/host/export_onnx.py"
     echo "[容器 2/4] 校准与量化."

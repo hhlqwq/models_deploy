@@ -6,8 +6,8 @@ MTK 与 RDK 各自维护模型导出、量化、编译及 Python 板端推理.�
 
 | 平台 | 模型目录 | 编译环境 | 平台配置 |
 | --- | --- | --- | --- |
-| MTK | [mtk_models](mtk_models/README.md) | [docker/mtk](docker/mtk/README.md) | configs/platforms/genio_720.yaml |
-| RDK S100 | [rdk_models](rdk_models/README.md) | [docker/s100](docker/s100/README.md) | configs/platforms/s100.yaml |
+| MTK | [mtk_models](mtk_models/README.md) | [docker/mtk_g720](docker/mtk_g720/README.md) | configs/platforms/genio_720.yaml |
+| RDK S100 | [rdk_models](rdk_models/README.md) | [docker/rdk_s100](docker/rdk_s100/README.md) | configs/platforms/s100.yaml |
 
 S100 首个模型为 [Depth Anything V2 Metric Hypersim ViT-S](rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim_vits/README.md),用于室内米制深度估计.FP32 ONNX 已导出为 IR9/opset17,独立单文件 CPU 单图推理已验证.100 张校准、HBM 编译和三样本运行包上传已完成;板端三样本通路与对照已完成,正式评价待执行.NYU 日常数据已整理为 RGB PNG 与米制 FP32 NPY,原始 MAT 仅归档.
 
@@ -18,7 +18,7 @@ GitHub 仓库已改名为 hhlqwq/models_deploy,本地 checkout 根目录暂保�
 ## MTK 使用说明
 
 - [模型总览](mtk_models/README.md)
-- [编译环境](docs/environment.md)与 [MTK Docker](docker/mtk/README.md)
+- [编译环境](docs/environment.md)与 [MTK Docker](docker/mtk_g720/README.md)
 - [Genio 720 板端规范](docs/genio_720.md)
 - [MTK 模型部署 skill](.agents/skills/mtk-model-deploy/SKILL.md)
 
@@ -29,7 +29,7 @@ GitHub 仓库已改名为 hhlqwq/models_deploy,本地 checkout 根目录暂保�
 在 Ubuntu 编译主机的仓库根目录进入已有容器:
 
 ```bash
-bash docker/mtk/enter_container.sh
+bash docker/mtk_g720/enter_container.sh
 ```
 
 在容器的仓库根目录执行所选模型入口,例如:
@@ -61,7 +61,7 @@ bash mtk_models/deploy/compile.sh
 
 评分、参考及模型版本不匹配时明确失败,不生成成功报告.主机上传不会自动执行板端推理;上传成功只能标记待板端检查.任务范围及接口说明见[输出误差与精度](docs/output_metrics.md).
 
-新建编译环境时使用 `docker/mtk/build_image.sh` 和 `docker/mtk/create_container.sh`,具体资源要求见 Docker 文档.运行模型时不自动下载权重、数据集或安装依赖.
+新建编译环境时使用 `docker/mtk_g720/build_image.sh` 和 `docker/mtk_g720/create_container.sh`,具体资源要求见 Docker 文档.运行模型时不自动下载权重、数据集或安装依赖.
 
 ## 存储规则
 

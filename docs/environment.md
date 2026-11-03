@@ -25,10 +25,10 @@
 在项目根目录执行:
 
 ```bash
-bash docker/mtk/enter_container.sh
+bash docker/mtk_g720/enter_container.sh
 ```
 
-入口按平台配置准备 SDK、NCC 和板端环境变量.模型转换、DLA 编译与上传在容器内执行,模型精度和性能测试按对应入口在目标开发板执行.完整准备方式见 [Docker 说明](../docker/mtk/README.md).
+入口按平台配置准备 SDK、NCC 和板端环境变量.模型转换、DLA 编译与上传在容器内执行,模型精度和性能测试按对应入口在目标开发板执行.完整准备方式见 [Docker 说明](../docker/mtk_g720/README.md).
 
 容器使用 Python 3.11,与现有 SDK 的 cp311 wheel 对齐.普通模型环境使用 Torch 2.0.0+cu118 和 ONNX 1.13.1; 需要其他框架或版本的模型按其说明使用独立环境,避免覆盖共享依赖.
 

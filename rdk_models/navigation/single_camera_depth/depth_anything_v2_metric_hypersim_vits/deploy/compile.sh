@@ -6,7 +6,7 @@ if [[ -f "${SCRIPT_DIR}/config.json" ]]; then
     echo "[S100 板端] 少量通路检查与示例."
     python3 "${SCRIPT_DIR}/board/infer.py"
 else
-    : "${RDK_MODELS_ROOT:?请先进入 docker/s100/enter_container.sh 对应环境}"
+    : "${RDK_MODELS_ROOT:?请先进入 docker/rdk_s100/enter_container.sh 对应环境}"
     echo "[S100 1/4] 导出室内米制深度模型."
     python3 "${SCRIPT_DIR}/host/export.py"
     echo "[S100 2/4] 使用 NYU train 准备校准数据."

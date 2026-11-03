@@ -26,7 +26,7 @@ MT8189 / MDLA 5.3.
 
 将官方权重离线放入外部模型资源目录的 `yolov8n.pt`,脚本会验证哈希,不在线下载模型和依赖.
 
-通过 `bash docker/mtk/enter_container.sh` 进入编译容器,在项目根目录执行:
+通过 `bash docker/mtk_g720/enter_container.sh` 进入编译容器,在项目根目录执行:
 
 ```bash
 bash mtk_models/perception/object_detection/yolov8n/deploy/compile.sh

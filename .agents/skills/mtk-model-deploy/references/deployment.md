@@ -15,7 +15,7 @@
 先进入编译容器,再执行已选择的模型入口:
 
 ```bash
-bash docker/enter_container.sh
+bash docker/mtk_g720/enter_container.sh
 bash models/perception/object_detection/yolov5s/deploy/compile.sh
 ```
 

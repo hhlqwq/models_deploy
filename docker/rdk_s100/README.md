@@ -8,8 +8,8 @@ toolchain.root 指向 NAS 的 S100/tools,统一归档 SDK、离线安装包及�
 在仓库根目录执行:
 
 ```bash
-bash docker/s100/create_container.sh
-bash docker/s100/enter_container.sh
+bash docker/rdk_s100/create_container.sh
+bash docker/rdk_s100/enter_container.sh
 ```
 
 创建入口只创建独立新容器,同名容器存在时失败,不会修改、重启已有容器.

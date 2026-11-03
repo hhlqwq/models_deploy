@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+from importlib.metadata import version
 
 import cv2
 import mtk_converter
@@ -18,7 +19,10 @@ def main():
     """构建时检查依赖, 启动时额外检查真实 CUDA 运算."""
     subprocess.run([sys.executable, "-m", "pip", "check"], check=True)
     print("[VERIFY]", sys.version, mtk_converter.__version__, cv2.__version__)
-    print("[LLM]", transformers.__version__, pyarrow.__version__)
+    llm_version = version("mtk-llm-sdk")
+    if llm_version != "2.7.5":
+        raise RuntimeError(f"需要 mtk-llm-sdk 2.7.5,实际为 {llm_version}.")
+    print("[LLM]", llm_version, transformers.__version__, pyarrow.__version__)
     if "--build" in sys.argv:
         return
     assert torch.cuda.is_available(), "CUDA 不可用"

@@ -1,7 +1,7 @@
 # RDK 模型
 
 本目录独立维护地瓜平台模型的导出、量化、编译和 Python 板端实现,不调用 MTK 转换器或 Runtime.
-平台配置见 `configs/platforms/s100.yaml`,编译环境见 [S100 Docker](../docker/s100/README.md).
+平台配置见 `configs/platforms/s100.yaml`,编译环境见 [S100 Docker](../docker/rdk_s100/README.md).
 
 | 模型 | 平台 | 状态 |
 | --- | --- | --- |

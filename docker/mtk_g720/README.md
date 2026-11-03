@@ -11,21 +11,27 @@
 
 ## 创建与使用
 
-在仓库根目录创建容器,镜像缺失或尚未预装 LLM 依赖时会自动构建:
+先显式构建完整镜像,并用全新容器检查依赖与编译器可用性.基础 SDK 与 mtk-llm-sdk 2.7.5 均在镜像构建阶段安装:
 
 ```bash
-bash docker/mtk/create_container.sh
+bash docker/mtk_g720/build_image.sh
+```
+
+镜像就绪后,在仓库根目录创建容器.镜像缺失或 LLM 版本标签不符时入口直接报错,不会自动构建、拉取镜像或补依赖:
+
+```bash
+bash docker/mtk_g720/create_container.sh
 ```
 
 进入已经运行的容器:
 
 ```bash
-bash docker/mtk/enter_container.sh
+bash docker/mtk_g720/enter_container.sh
 ```
 
 进入后直接使用 `python`、编译器和其他工具,执行模型入口或独立步骤.依赖在镜像构建时安装,项目路径和平台环境在创建容器时设置;进入脚本只初始化普通账户并打开终端,不安装依赖或切换解释器.
 
-创建和进入入口必须由宿主机普通用户执行,不要使用 `sudo bash`.新容器默认使用该用户的 UID/GID,已有容器通过 `docker exec --user UID` 使用同一身份,主组从账户读取,无需重启.只指定 UID 才能保留账户的附加组,不要在进入命令中附加 `:GID`.共享的 `docker/mtk/user.sh` 为该身份配置 `/home/` 下的 HOME、可写缓存和必要附加组,新生成的本地挂载文件归宿主机用户所有.必要的账户和系统配置步骤显式使用 root,模型任务使用普通用户.
+创建和进入入口必须由宿主机普通用户执行,不要使用 `sudo bash`.新容器默认使用该用户的 UID/GID,已有容器通过 `docker exec --user UID` 使用同一身份,主组从账户读取,无需重启.只指定 UID 才能保留账户的附加组,不要在进入命令中附加 `:GID`.共享的 `docker/mtk_g720/user.sh` 为该身份配置 `/home/` 下的 HOME、可写缓存和必要附加组,新生成的本地挂载文件归宿主机用户所有.必要的账户和系统配置步骤显式使用 root,模型任务使用普通用户.
 
 首次配置普通账户时,将调用者已有的 `~/.ssh` 复制到容器普通用户 HOME,设置为该用户可读的私有目录,供现有上传步骤使用.不会覆盖已有容器用户的 SSH 配置,密钥不进入代码仓库.后续 SSH 配置变更需单独同步.共享临时根目录 `/tmp/hailongcodex` 和当天日期目录使用 sticky bit,不递归修改历史任务数据.
 

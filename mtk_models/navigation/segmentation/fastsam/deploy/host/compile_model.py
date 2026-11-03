@@ -12,7 +12,7 @@ from tools.process import run_command
 def compile_model(config: dict, paths: dict, config_path: Path) -> None:
     """调用 Neuron 编译器生成 Genio 720 使用的 DLA."""
     if not os.environ.get("NCC_ROOT"):
-        raise RuntimeError("请先通过 docker/mtk/enter_container.sh 进入容器.")
+        raise RuntimeError("请先通过 docker/mtk_g720/enter_container.sh 进入容器.")
     ncc = Path(os.environ["NCC_ROOT"])
     environment = dict(os.environ)
     environment["LD_LIBRARY_PATH"] = f"{ncc / 'lib'}:{environment.get('LD_LIBRARY_PATH', '')}"

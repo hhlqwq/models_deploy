@@ -11,7 +11,7 @@ source "${PROJECT_ROOT}/tools/storage.sh"
 readonly CONTAINER_NAME="${MTK_CONTAINER_NAME}"
 
 # 复用已运行容器,初始化普通账户即可,不安装依赖或重启容器.
-source "${PROJECT_ROOT}/docker/mtk/user.sh"
+source "${PROJECT_ROOT}/docker/mtk_g720/user.sh"
 echo "[进入容器] 编译用户 ${MTK_CONTAINER_UID}:${MTK_CONTAINER_GID},HOME=${MTK_CONTAINER_HOME}."
 exec docker exec -it --user "${MTK_CONTAINER_UID}" \
     --env HOME="${MTK_CONTAINER_HOME}" \

@@ -4,7 +4,7 @@
 
 本项目 models_deploy 面向 MTK Genio 720、G5100 和地瓜 RDK S100,对开源模型进行兼容性修改、转换、量化、部署与板端验证;模型交付结构、文档完整度和结果展示方式参考 Qualcomm Hugging Face Models,但不使用 Qualcomm 模型作为移植源.
 
-MTK 实现位于 mtk_models/,RDK 实现位于 rdk_models/.两者独立维护导出、量化、编译和板端 Runtime;Docker 分别位于 docker/mtk/ 和 docker/s100/.平台连接信息与内部资源路径仅放本地配置.旧 MTK skill 中的顶层 models/ 路径按 mtk_models/ 理解,模型内部资源包 models/ 不改名;报告要求冲突时以本文件和用户最新指令为准.
+MTK 实现位于 mtk_models/,RDK 实现位于 rdk_models/.两者独立维护导出、量化、编译和板端 Runtime;Docker 分别位于 docker/mtk_g720/ 和 docker/rdk_s100/.平台连接信息与内部资源路径仅放本地配置.旧 MTK skill 中的顶层 models/ 路径按 mtk_models/ 理解,模型内部资源包 models/ 不改名;报告要求冲突时以本文件和用户最新指令为准.
 
 ## 工作规范
 

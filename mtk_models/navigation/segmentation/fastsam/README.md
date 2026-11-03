@@ -23,7 +23,7 @@
 在项目根目录进入编译容器:
 
 ```bash
-bash docker/mtk/enter_container.sh
+bash docker/mtk_g720/enter_container.sh
 ```
 
 进入容器后,在本模型目录执行:

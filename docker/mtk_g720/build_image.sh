@@ -13,4 +13,4 @@ docker buildx build --load --progress=plain --network host \
     --build-context "gai=${GAI_SDK_DIR}" \
     --build-arg "MTK_SDK_ROOT=${SDK_DIR}" \
     --tag "${IMAGE_NAME}" \
-    --file docker/mtk/Dockerfile docker/mtk
+    --file docker/mtk_g720/Dockerfile docker/mtk_g720

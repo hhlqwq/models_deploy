@@ -29,10 +29,11 @@ for STORAGE_ROOT in "${MODEL_STORAGE_ROOT}" "${DATASET_ROOT}"; do
         *) echo "[ERROR] 模型和数据集目录必须位于已挂载的 NAS." >&2; exit 1 ;;
     esac
 done
-# 缺少完整 LLM 镜像时先构建,依赖在镜像中预装.
+# 创建只使用已构建的完整镜像,不隐式下载或安装依赖.
 IMAGE_LLM_VERSION="$(docker image inspect --format '{{index .Config.Labels "mtk.llm_sdk"}}' "${IMAGE_NAME}" 2>/dev/null || true)"
 if [[ "${IMAGE_LLM_VERSION}" != "2.7.5" ]]; then
-    bash "${PROJECT_ROOT}/docker/mtk/build_image.sh"
+    echo "[错误] 镜像不存在或未声明 LLM SDK 2.7.5,请先执行 docker/mtk_g720/build_image.sh 并完成全新容器环境检查." >&2
+    exit 1
 fi
 
 if docker container inspect "${CONTAINER_NAME}" >/dev/null 2>&1; then
@@ -70,7 +71,7 @@ else
     echo "[2/4] 使用已经构建好的 Ubuntu MTK 镜像."
 
     echo "[3/4] 创建 Genio 720 转换容器."
-    docker run --detach \
+    docker run --detach --pull never \
         --name "${CONTAINER_NAME}" \
         --hostname "${CONTAINER_NAME}" \
         --user "${HOST_UID}:${HOST_GID}" \
@@ -110,7 +111,7 @@ else
 fi
 
 echo "[4/4] 固定终端环境并设置项目访问权限."
-source "${PROJECT_ROOT}/docker/mtk/user.sh"
+source "${PROJECT_ROOT}/docker/mtk_g720/user.sh"
 # 创建时写入普通登录终端的环境,进入容器时无需重新读取配置.
 {
     python3 "${PROJECT_ROOT}/tools/storage.py"

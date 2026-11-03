@@ -29,4 +29,4 @@ docker run --detach --pull never \
     --volume "${RDK_TOOLCHAIN_ROOT}:${RDK_TOOLCHAIN_ROOT}:ro" \
     --workdir "${PROJECT_ROOT}" \
     "${RDK_IMAGE}" -c 'exec sleep infinity'
-echo "[S100 3/3] 容器已创建,使用 docker/s100/enter_container.sh 进入."
+echo "[S100 3/3] 容器已创建,使用 docker/rdk_s100/enter_container.sh 进入."
