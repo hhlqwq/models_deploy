@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# 主机转换、量化、编译和部署;板端只做通路检查与示例.
+# 主机转换、量化、编译和部署;板端完成固定子集精度、数值对比与示例.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -f "${SCRIPT_DIR}/config.json" ]]; then
-    echo "[S100 板端] 少量通路检查与示例."
+    echo "[S100 板端] 固定 100 张子集精度、数值对比与示例."
     python3 "${SCRIPT_DIR}/board/infer.py"
 else
     : "${RDK_MODELS_ROOT:?请先进入 docker/rdk_s100/enter_container.sh 对应环境}"
@@ -13,6 +13,6 @@ else
     python3 "${SCRIPT_DIR}/host/calibrate.py"
     echo "[S100 3/4] 量化与编译."
     python3 "${SCRIPT_DIR}/host/compile.py"
-    echo "[S100 4/4] 打包并上传,不自动启动板端推理."
+    echo "[S100 4/4] 评价 ONNX 固定子集并上传,不自动启动板端推理."
     python3 "${SCRIPT_DIR}/host/deploy.py"
 fi

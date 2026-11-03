@@ -48,25 +48,31 @@ class NYUDataset:
 
     def __init__(self, root, config, split="both"):
         """核对样本编号、顺序与文件配对,正式板端评价可只装测试集."""
-        if split not in ("both", "test"):
-            raise ValueError("仅支持 both 或 test 范围.")
+        if split not in ("both", "test", "subset"):
+            raise ValueError("仅支持 both、test 或 subset 范围.")
         self.root = Path(root)
         self.paths = {}
         self.train = self.indices("train", 795) if split == "both" else np.array([], dtype=int)
-        self.test = self.indices("test", 654)
+        if split == "subset":
+            self.test = self.indices("test", config["compile_samples"], subset=True)
+        else:
+            self.test = self.indices("test", 654)
         if split == "both" and (set(self.train) & set(self.test)
                                 or set(self.train) | set(self.test) != set(range(1449))):
             raise ValueError("NYU 必须保留标准互斥的 795/654 划分.")
 
-    def indices(self, name, count):
+    def indices(self, name, count, *, subset=False):
         """读取从官方划分导出的原始顺序,确认每个 RGB 都有对应深度."""
         folder = self.root / name
-        ids = np.loadtxt(folder / "indices.txt", dtype=int, ndmin=1)
+        index_file = folder / ("compile_indices.txt" if subset else "indices.txt")
+        ids = np.loadtxt(index_file, dtype=int, ndmin=1)
         if len(ids) != count or len(set(ids)) != count or np.any((ids < 1) | (ids > 1449)):
             raise ValueError(f"{name} 样本编号或数量错误.")
         stems = {f"{index:04d}" for index in ids}
-        if ({p.stem for p in (folder / "rgb").glob("*.png")} != stems
-                or {p.stem for p in (folder / "depth").glob("*.npy")} != stems):
+        rgb = {p.stem for p in (folder / "rgb").glob("*.png")}
+        depth = {p.stem for p in (folder / "depth").glob("*.npy")}
+        if (not stems <= rgb or not stems <= depth
+                or (not subset and (rgb != stems or depth != stems))):
             raise ValueError(f"{name} 的 RGB 和深度文件没有完整配对.")
         for index in ids:
             self.paths[int(index) - 1] = (
@@ -137,3 +143,13 @@ def save_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False)
                     + "\n", encoding="utf-8")
+
+
+def sample_identity(dataset, indices):
+    """绑定选定 RGB 和深度内容,两端以同一顺序核对同一子集."""
+    digest = hashlib.sha256()
+    for index in indices:
+        for path in dataset.paths[int(index)]:
+            digest.update(path.name.encode())
+            digest.update(fingerprint(path).encode())
+    return digest.hexdigest()

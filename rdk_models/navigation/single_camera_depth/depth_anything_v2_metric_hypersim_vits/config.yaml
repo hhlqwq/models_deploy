@@ -19,10 +19,11 @@ export:
     layout: NCHW
     dtype: float32
 quantization:
-    node_policy: set_all_nodes_int16
+    node_policy: set_all_nodes_int8
     calibration_samples: 100
     seed: 17
 evaluation:
+    compile_samples: 100
     dataset: NYU_depth_v2
     data_format: rgb_png_depth_float32_npy_meters
     protocol: nyu_654_eigen_crop_metric_no_scale_alignment

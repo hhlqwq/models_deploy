@@ -8,7 +8,7 @@ from context import context
 
 
 def main():
-    """使用显式 INT16 节点策略编译,不推断实际权重和激活位宽."""
+    """使用显式 INT8 节点策略编译,不推断实际权重和激活位宽."""
     ctx = context()
     shape = ctx.config["export"]["input_shape"]
     working = ctx.output / "build"

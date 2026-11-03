@@ -58,7 +58,7 @@ def upload(ctx, files, *, dataset=False):
 
 
 def main():
-    """准备精简配置与三个固定示例,上传 HBM 和 Python 运行代码."""
+    """评价固定百张子集并上传公共数据、参考和模型,保留三张数值示例."""
     ctx = context()
     sys.path.insert(0, str(ctx.model / "deploy"))
     from model import NYUDataset, fingerprint, preprocess, save_json
@@ -88,32 +88,57 @@ def main():
         files.append((deploy / name, name))
     for path in (deploy / "board").glob("*.py"):
         files.append((path, "board/" + path.name))
-    dataset = NYUDataset(ctx.dataset, config["evaluation"])
-    session = ort.InferenceSession(
-        str(ctx.output / "depth_anything_v2_metric_hypersim_vits.onnx"),
-        providers=["CPUExecutionProvider"])
-    predictions, truths = [], []
-    config["compile_sample_ids"] = [int(index) + 1 for index in dataset.test[:3]]
+    from tools.evaluation import fixed_subset
+    from model import restore_depth, sample_identity, score_depth
+
+    dataset = NYUDataset(ctx.dataset, config["evaluation"], split="test")
+    selected = fixed_subset([int(index) for index in dataset.test],
+                            config["evaluation"]["compile_samples"],
+                            required=[int(index) for index in dataset.test[:3]])
+    config["compile_sample_ids"] = [index + 1 for index in selected]
+    config["numerical_sample_ids"] = [int(index) + 1 for index in dataset.test[:3]]
+    config["compile_dataset_identity"] = sample_identity(dataset, selected)
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 4
+    session = ort.InferenceSession(str(onnx), sess_options=options,
+                                   providers=["CPUExecutionProvider"])
+    predictions, numeric_ids, metrics = [], [], []
+    data_files = []
     try:
-        for index in dataset.test[:3]:
-            image, truth = dataset.read(int(index))
-            path = package / f"sample_{int(index) + 1:04d}.png"
-            if not cv2.imwrite(str(path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR)):
-                raise OSError("固定示例输入保存失败.")
-            files.append((path, "examples/input/" + path.name))
-            tensor = preprocess(image, ctx.config["export"]["input_shape"])
-            predictions.append(session.run(["metric_depth"], {"image": tensor})[0][0])
-            truths.append(truth)
-            print(f"[小批量参考] NYU {int(index) + 1},完成 ONNX 输出.", flush=True)
+        for step, index in enumerate(selected, 1):
+            image, truth = dataset.read(index)
+            prediction = session.run(["metric_depth"],
+                                     {"image": preprocess(image, config["export"]["input_shape"])})[0][0]
+            metrics.append(score_depth(restore_depth(prediction, *image.shape[:2]),
+                                       truth, config["evaluation"]))
+            if index + 1 in config["numerical_sample_ids"]:
+                path = package / f"sample_{index + 1:04d}.png"
+                if not cv2.imwrite(str(path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR)):
+                    raise OSError("示例输入保存失败.")
+                files.append((path, "examples/input/" + path.name))
+                predictions.append(prediction)
+                numeric_ids.append(index + 1)
+            for path in dataset.paths[index]:
+                data_files.append((path, config["evaluation"]["dataset"] + "/"
+                                   + path.relative_to(ctx.dataset).as_posix()))
+            if step % 10 == 0 or step == len(selected):
+                print(f"[ONNX 子集精度] {step}/{len(selected)}", flush=True)
     finally:
         dataset.close()
+    config["compile_onnx_metrics"] = {
+        key: float(np.mean([row[key] for row in metrics])) for key in metrics[0]}
+    for key, value in config["compile_onnx_metrics"].items():
+        print(f"[ONNX 子集精度] {key}={value:.6f}", flush=True)
+    indices = package / "compile_indices.txt"
+    np.savetxt(indices, config["compile_sample_ids"], fmt="%d")
+    data_files.append((indices, config["evaluation"]["dataset"] + "/test/compile_indices.txt"))
     reference = package / "compile_reference.npz"
-    np.savez_compressed(reference, ids=np.array(config["compile_sample_ids"]),
-                        depth=np.stack(predictions), truth=np.stack(truths))
+    np.savez_compressed(reference, ids=np.array(numeric_ids), depth=np.stack(predictions))
     config["compile_reference_sha256"] = fingerprint(reference)
     config["compile_reference"] = "build/reference/compile_reference.npz"
     save_json(package / "config.json", config)
     files.append((reference, config["compile_reference"]))
+    upload(ctx, data_files, dataset=True)
     upload(ctx, files)
     print("[编译部署完成] 请登录 S100,在本模型部署目录执行 bash compile.sh.", flush=True)
 
