@@ -75,10 +75,12 @@ def check_model(entry: dict[str, Any]) -> list[str]:
         if not (model_root / required_file).is_file():
             errors.append(f"{model_id}: 缺少文件: {required_file}")
     results = model_root / "results"
+    allowed_reports = (("summary.json",) if relative_path.parts[:1] == ("rdk_models",)
+                       else ("summary.json", "summary_test.json"))
     if results.is_dir():
         for path in results.iterdir():
-            if path.name not in ("summary.json", "summary_test.json") or not path.is_file():
-                errors.append(f"{model_id}: results 只允许保留 summary.json 和 summary_test.json: {path.name}")
+            if path.name not in allowed_reports or not path.is_file():
+                errors.append(f"{model_id}: results 只允许保留 {', '.join(allowed_reports)}: {path.name}")
     if (model_root / "deploy/run.sh").exists():
         errors.append(f"{model_id}: 旧 run.sh 应统一改为 compile.sh")
 

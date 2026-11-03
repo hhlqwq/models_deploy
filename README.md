@@ -1,12 +1,26 @@
 # Models Deploy
 
-面向 MediaTek Genio 720 和 Genio 5100 的开源模型适配仓库,包含模型转换、量化、NPU 部署及精度和性能评价.模型必须来自作者或官方开源项目;Qualcomm AI Hub Models 仅作为目录和交付方式参考.
+面向 MediaTek Genio 720、Genio 5100 与地瓜 RDK S100 的开源模型部署仓库.模型源码与权重来自作者或官方项目;Qualcomm AI Hub Models 仅作为交付结构参考.
 
-- [MTK 模型部署 skill](.agents/skills/mtk-model-deploy/SKILL.md): 复用本仓库适配与独立评价流程.
-- [模型总览](mtk_models/README.md): 型号、输入、量化方式和已归档指标.
-- [编译环境](docs/environment.md)与 [Docker](docker/mtk/README.md): 工具链、依赖和容器配置.
-- [Genio 720 板端规范](docs/genio_720.md): 部署布局、运行要求和评价口径.
-- [YOLOv5s 学习文档](docs_study/Genio720_MT8189部署YOLOv5s总览.md): 分阶段理解完整部署链路.
+MTK 与 RDK 各自维护模型导出、量化、编译及 Python 板端推理.模型和数据集保存在 NAS,连接信息、内部路径及容器名称只写本地配置,不提交 Git.
+
+| 平台 | 模型目录 | 编译环境 | 平台配置 |
+| --- | --- | --- | --- |
+| MTK | [mtk_models](mtk_models/README.md) | [docker/mtk](docker/mtk/README.md) | configs/platforms/genio_720.yaml |
+| RDK S100 | [rdk_models](rdk_models/README.md) | [docker/s100](docker/s100/README.md) | configs/platforms/s100.yaml |
+
+S100 首个模型为 [Depth Anything V2 Metric Hypersim ViT-S](rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim_vits/README.md),用于室内米制深度估计.FP32 ONNX 已导出为 IR9/opset17,提供单张 RGB 图片推理脚本.量化、编译、板端推理和正式评价尚未执行,这些环节的代码为待验证实现.
+
+每模型的目标入口为 deploy/compile.sh 和 deploy/evaluate.sh.前者负责转换、量化、编译、部署和少量通路检查并保存示例;后者独立使用已有产物评价精度、性能与进程峰值 RSS,结果仅保存一个 results/summary.json.已有 MTK 实现仍含历史双报告行为,本次目录迁移没有改写这些流程或历史指标.
+
+GitHub 仓库已改名为 hhlqwq/models_deploy,本地 checkout 根目录暂保留原名称.
+
+## MTK 使用说明
+
+- [模型总览](mtk_models/README.md)
+- [编译环境](docs/environment.md)与 [MTK Docker](docker/mtk/README.md)
+- [Genio 720 板端规范](docs/genio_720.md)
+- [MTK 模型部署 skill](.agents/skills/mtk-model-deploy/SKILL.md)
 
 ## 快速开始
 
@@ -71,7 +85,8 @@ bash mtk_models/deploy/compile.sh
 
 ```text
 configs/             平台、工具链及本地存储配置模板
-mtk_models/          按场景和任务组织的 MTK 模型适配
+mtk_models/          MTK 模型适配
+rdk_models/          RDK 模型适配
 tools/               公共配置、转换、Python Runtime、评价及文件工具
 docker/              编译镜像与容器入口
 registry/            模型范围、来源索引与状态

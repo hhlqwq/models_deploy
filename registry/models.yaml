@@ -1,5 +1,14 @@
 schema_version: 1
 models:
+  - id: depth_anything_v2_metric_hypersim_vits
+    batch: rdk_first
+    pilot: true
+    scenario: navigation
+    category: single_camera_depth
+    path: rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim_vits
+    source: DepthAnything/Depth-Anything-V2
+    platforms:
+      s100: not_started
   - id: mit_bevfusion
     batch: first_batch
     pilot: false
