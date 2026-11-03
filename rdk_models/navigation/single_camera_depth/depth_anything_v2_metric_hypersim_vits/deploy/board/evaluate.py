@@ -28,10 +28,10 @@ def main():
         raise ValueError("板端 HBM 与部署配置不一致.")
     dataset_root = root / config["dataset_directory"]
     print("[评价 1/3] 检查原始数据与参考身份.", flush=True)
-    for name, expected in reference["dataset_identity"].items():
-        if fingerprint(dataset_root / name) != expected:
-            raise ValueError("板端数据与浮点参考数据不一致.")
-    dataset = NYUDataset(dataset_root, config["evaluation"])
+    dataset = NYUDataset(dataset_root, config["evaluation"], split="test")
+    if dataset.identity() != reference["dataset_identity"]:
+        dataset.close()
+        raise ValueError("板端 PNG/NPY 数据与浮点参考不一致.")
     if [int(index) + 1 for index in dataset.test] != reference["sample_ids"]:
         dataset.close()
         raise ValueError("板端评价样本与浮点参考覆盖不一致.")

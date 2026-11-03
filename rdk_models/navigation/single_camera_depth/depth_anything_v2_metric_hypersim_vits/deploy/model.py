@@ -44,39 +44,67 @@ def restore_depth(depth, height, width):
 
 
 class NYUDataset:
-    """直接读取官方 MAT 数据和标准划分,不生成重复的图片与深度副本."""
+    """读取整理后的 RGB PNG 和米制 FP32 NPY,不依赖 MAT 或 HDF5."""
 
-    def __init__(self, root, config):
-        """核对官方样本数量和训练测试互斥关系,按需读取单帧."""
-        import h5py
-        from scipy.io import loadmat
+    def __init__(self, root, config, split="both"):
+        """核对样本编号、顺序与文件配对,正式板端评价可只装测试集."""
+        if split not in ("both", "test"):
+            raise ValueError("仅支持 both 或 test 范围.")
+        self.root = Path(root)
+        self.paths = {}
+        self.train = self.indices("train", 795) if split == "both" else np.array([], dtype=int)
+        self.test = self.indices("test", 654)
+        if split == "both" and (set(self.train) & set(self.test)
+                                or set(self.train) | set(self.test) != set(range(1449))):
+            raise ValueError("NYU 必须保留标准互斥的 795/654 划分.")
 
-        root = Path(root)
-        splits = loadmat(root / config["split_file"])
-        self.train = np.asarray(splits["trainNdxs"]).reshape(-1).astype(int) - 1
-        self.test = np.asarray(splits["testNdxs"]).reshape(-1).astype(int) - 1
-        if (len(self.train) != 795 or len(self.test) != 654
-                or len(set(self.train) | set(self.test)) != 1449
-                or set(self.train) & set(self.test)
-                or min(*self.train, *self.test) != 0
-                or max(*self.train, *self.test) != 1448):
-            raise ValueError("NYU 划分必须为互斥的标准 795/654 样本.")
-        self.file = h5py.File(root / config["labeled_file"], "r")
-        if self.file["images"].shape != (1449, 3, 640, 480):
-            self.file.close()
-            raise ValueError("NYU MAT 的 images 形状与官方 HDF5 格式不符.")
+    def indices(self, name, count):
+        """读取从官方划分导出的原始顺序,确认每个 RGB 都有对应深度."""
+        folder = self.root / name
+        ids = np.loadtxt(folder / "indices.txt", dtype=int, ndmin=1)
+        if len(ids) != count or len(set(ids)) != count or np.any((ids < 1) | (ids > 1449)):
+            raise ValueError(f"{name} 样本编号或数量错误.")
+        stems = {f"{index:04d}" for index in ids}
+        if ({p.stem for p in (folder / "rgb").glob("*.png")} != stems
+                or {p.stem for p in (folder / "depth").glob("*.npy")} != stems):
+            raise ValueError(f"{name} 的 RGB 和深度文件没有完整配对.")
+        for index in ids:
+            self.paths[int(index) - 1] = (
+                folder / "rgb" / f"{index:04d}.png", folder / "depth" / f"{index:04d}.npy")
+        return ids - 1
 
     def read(self, index):
         """按原始零基索引读取 RGB 和以米为单位的填洞深度."""
-        image = np.asarray(self.file["images"][index]).transpose(2, 1, 0)
-        depth = np.asarray(self.file["depths"][index], dtype=np.float32).T
-        if image.dtype != np.uint8 or depth.shape != image.shape[:2]:
+        image_path, depth_path = self.paths[index]
+        bgr = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+        if bgr is None:
+            raise ValueError(f"RGB 图片不可读: {image_path.name}")
+        image = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        depth = np.load(depth_path, allow_pickle=False)
+        if (image.dtype != np.uint8 or depth.dtype != np.float32
+                or image.shape != (480, 640, 3) or depth.shape != image.shape[:2]):
             raise ValueError("NYU 图像格式或深度尺寸不匹配.")
         return image, depth
 
     def close(self):
-        """关闭 HDF5 资源句柄."""
-        self.file.close()
+        """释放路径索引,图片和深度均按次读取而不保留文件句柄."""
+        self.paths.clear()
+
+    def test_files(self):
+        """列出正式测试实际需要的文件,不上传训练集或原始 MAT."""
+        files = [Path("test/indices.txt")]
+        for index in self.test:
+            files.extend([Path(f"test/rgb/{index + 1:04d}.png"),
+                          Path(f"test/depth/{index + 1:04d}.npy")])
+        return files
+
+    def identity(self):
+        """将测试文件名和内容汇总成单个身份值,不发布逐文件哈希清单."""
+        digest = hashlib.sha256()
+        for relative in self.test_files():
+            digest.update(relative.as_posix().encode() + b"\0")
+            digest.update(fingerprint(self.root / relative).encode())
+        return digest.hexdigest()
 
 
 def score_depth(prediction, reference, config):

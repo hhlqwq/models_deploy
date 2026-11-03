@@ -33,26 +33,24 @@ def main():
                 print(f"[ONNX 正式参考] {step}/{len(dataset.test)}", flush=True)
     finally:
         dataset.close()
-    labeled = ctx.dataset / ctx.config["evaluation"]["labeled_file"]
-    splits = ctx.dataset / ctx.config["evaluation"]["split_file"]
-    print("[评价资源] 绑定数据与模型身份,随后上传原始 MAT 和参考摘要.", flush=True)
+    print("[评价资源] 绑定 PNG/NPY 数据与模型身份,仅上传 test 和参考摘要.", flush=True)
     reference = {
         "backend": "onnx_cpu", "evaluation": ctx.config["evaluation"],
         "export": ctx.config["export"],
         "identity": {
             "hbm_sha256": fingerprint(artifacts[0]), "onnx_sha256": fingerprint(onnx),
         },
-        "dataset_identity": {labeled.name: fingerprint(labeled), splits.name: fingerprint(splits)},
+        "dataset_identity": dataset.identity(),
         "sample_ids": [int(index) + 1 for index in dataset.test],
         "metrics": {key: float(np.mean([row[key] for row in metrics])) for key in metrics[0]},
     }
     path = ctx.work / "reference.json"
     save_json(path, reference)
-    upload(ctx, [
-        (path, "build/reference/reference.json"),
-        (labeled, "datasets/NYU_Depth_V2/" + labeled.name),
-        (splits, "datasets/NYU_Depth_V2/" + splits.name),
-    ])
+    files = [(path, "build/reference/reference.json")]
+    files.extend((ctx.dataset / relative,
+                  "datasets/" + ctx.config["evaluation"]["dataset"] + "/" + relative.as_posix())
+                 for relative in dataset.test_files())
+    upload(ctx, files)
     print("[正式参考完成] 请在板端模型目录执行 bash evaluate.sh.", flush=True)
 
 

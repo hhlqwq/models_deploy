@@ -23,9 +23,8 @@ quantization:
     calibration_samples: 100
     seed: 17
 evaluation:
-    dataset: NYU_Depth_V2
-    labeled_file: nyu_depth_v2_labeled.mat
-    split_file: splits.mat
+    dataset: NYU_depth_v2
+    data_format: rgb_png_depth_float32_npy_meters
     protocol: nyu_654_eigen_crop_metric_no_scale_alignment
     min_depth: 0.001
     max_depth: 10.0
