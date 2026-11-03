@@ -26,7 +26,9 @@ def main():
         raise ValueError("浮点参考与部署包版本或协议不一致.")
     if fingerprint(root / config["artifact"]) != config["identity"]["hbm_sha256"]:
         raise ValueError("板端 HBM 与部署配置不一致.")
-    dataset_root = root / config["dataset_directory"]
+    dataset_root = Path(config["dataset_directory"])
+    if not dataset_root.is_absolute():
+        raise ValueError("数据集必须指向本地配置指定的公共绝对路径.")
     print("[评价 1/3] 检查原始数据与参考身份.", flush=True)
     dataset = NYUDataset(dataset_root, config["evaluation"], split="test")
     if dataset.identity() != reference["dataset_identity"]:

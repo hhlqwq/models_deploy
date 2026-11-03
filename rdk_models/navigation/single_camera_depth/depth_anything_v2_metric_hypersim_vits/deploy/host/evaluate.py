@@ -16,7 +16,7 @@ def main():
     from model import NYUDataset, fingerprint, preprocess, restore_depth, save_json, score_depth
 
     onnx = ctx.output / "depth_anything_v2_metric_hypersim_vits.onnx"
-    artifacts = list((ctx.output / "build").glob("*.hbm"))
+    artifacts = list(ctx.output.glob("*.hbm"))
     if len(artifacts) != 1:
         raise ValueError("需要唯一已有 HBM,评价入口不会重新编译.")
     dataset = NYUDataset(ctx.dataset, ctx.config["evaluation"])
@@ -46,11 +46,12 @@ def main():
     }
     path = ctx.work / "reference.json"
     save_json(path, reference)
-    files = [(path, "build/reference/reference.json")]
+    upload(ctx, [(path, "build/reference/reference.json")])
+    files = []
     files.extend((ctx.dataset / relative,
-                  "datasets/" + ctx.config["evaluation"]["dataset"] + "/" + relative.as_posix())
+                  ctx.config["evaluation"]["dataset"] + "/" + relative.as_posix())
                  for relative in dataset.test_files())
-    upload(ctx, files)
+    upload(ctx, files, dataset=True)
     print("[正式参考完成] 请在板端模型目录执行 bash evaluate.sh.", flush=True)
 
 

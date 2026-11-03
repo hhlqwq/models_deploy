@@ -26,6 +26,10 @@ def load_config():
             config[section] = value
     if config["id"] != "s100" or config["march"] != "nash-e":
         raise ValueError("当前配置只支持 S100 / nash-e,其他型号需独立配置.")
+    for key in ("models_root", "datasets_root"):
+        path = Path(config["board"][key])
+        if not path.is_absolute() or path == Path("/") or ".." in path.parts:
+            raise ValueError(f"请在 S100 本地配置填写 board.{key} 的非根绝对路径.")
     return config
 
 

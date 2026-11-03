@@ -22,3 +22,5 @@ NAS 工具目录按同一路径只读挂载,依赖从归档安装到容器或匹
 
 工具链来源: https://developer.d-robotics.cc/rdk_doc_center/
 具体镜像版本必须与板端 Runtime 核对,镜像存在不代表已经验证兼容.
+
+板端资源路径在本地配置中分别填写 `board.models_root` 和 `board.datasets_root`,用于模型部署包与跨模型复用的公共数据集.原 `board.work_dir` 不再使用.

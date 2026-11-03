@@ -14,7 +14,7 @@
 校准使用 NYU Depth V2 标准训练划分中 seed=17 选取的 100 张图像,正式评价使用互斥的标准测试划分 654 张.使用米制真值、固定裁剪与有效深度范围,不进行逐图尺度对齐,契约见 [模型卡](model_card.md).
 
 当前状态: 2026-11-03 已导出 depth_anything_v2_metric_hypersim_vits.onnx,IR=9,opset=17,文件 99,652,380 字节.静态图改写检查、ONNX checker 和独立单文件 CPU 单图推理已完成.已完成 100 张训练样本校准与 HBM 编译,输入 [1,3,518,686]、输出 [1,518,686] 均为 FP32;运行包已上传,板端 NYU 1、2、9 三样本验证已完成,未进行正式精度评价.
-HBM 文件为 build/depth_anything_v2_metric_hypersim_vits.hbm,大小 129,165,096 字节.首次完整入口在打包目录未创建处失败,已修复并仅重跑打包上传成功,没有重复整套编译.
+HBM 文件为 depth_anything_v2_metric_hypersim_vits.hbm,大小 129,165,096 字节.首次完整入口在打包目录未创建处失败,已修复并仅重跑打包上传成功,没有重复整套编译.
 SDK 仿真校验样本的 metric_depth 量化余弦相似度为 0.999929,不能代替 NYU 任务精度.编译器将部分 Resize 标记为 BPU+CPU,当前 HBM 包含混合执行环节,不宣称全算子纯 BPU.
 
 ## 单张 RGB 图片推理
@@ -123,3 +123,9 @@ INT16 节点策略不等于已核实每层实际位宽;最终以真实编译结�
 浮点基线在这三个样本上的偏差本身较大,不能用输出相似度高推断测距精度合格.未运行 654 张正式评价、性能或 RSS 测量.
 
 ![NYU 1 的输入与 HBM 深度示例](examples/output/sample_0001_depth.jpg)
+
+## NAS 交付文件与板端目录
+
+NAS 本模型资源根目录保留最终 ONNX 和 HBM,`original/` 保存原始权重,`build/` 保存编译中间文件.编译成功后将 HBM 移至资源根目录,打包及评价均读取外层交付文件.
+
+板端部署包统一存放于本地配置 `board.models_root/<模型名>/`,公共数据集存放于 `board.datasets_root/<数据集名>/`.实际路径只写入 `configs/platforms/s100.local.yaml`.三张通路图片保留在模型 `examples/input/`,正式评价数据不再放进模型目录.

@@ -12,15 +12,15 @@ import onnxruntime as ort
 from context import context
 
 
-def upload(ctx, files):
-    """使用本地设备配置和已知主机密钥上传明确的文件清单."""
+def upload(ctx, files, *, dataset=False):
+    """分别向公共模型或数据集根目录上传明确的文件清单."""
     import paramiko
 
     board = ctx.platform["board"]
-    work = PurePosixPath(board["work_dir"])
+    work = PurePosixPath(board["datasets_root" if dataset else "models_root"])
     if not work.is_absolute() or str(work) == "/" or ".." in work.parts:
         raise ValueError("板端工作目录必须为非根目录的绝对路径.")
-    destination = str(work / ctx.config["board"]["deploy_directory"])
+    destination = str(work if dataset else work / ctx.config["board"]["deploy_directory"])
     repo = Path(__file__).resolve().parents[6]
     known = repo / "configs/platforms/s100.local.known_hosts"
     client = paramiko.SSHClient()
@@ -63,15 +63,18 @@ def main():
     sys.path.insert(0, str(ctx.model / "deploy"))
     from model import NYUDataset, fingerprint, preprocess, save_json
 
-    artifacts = list((ctx.output / "build").glob("*.hbm"))
+    onnx = ctx.output / "depth_anything_v2_metric_hypersim_vits.onnx"
+    if not onnx.is_file():
+        raise FileNotFoundError(f"NAS 模型资源根目录缺少 ONNX: {onnx};请核对文件位置,无需重新编译 HBM.")
+    artifacts = list(ctx.output.glob("*.hbm"))
     if len(artifacts) != 1 or artifacts[0].stat().st_size == 0:
-        raise ValueError("编译目录必须有唯一非空 HBM,请核对编译器实际输出.")
+        raise ValueError("NAS 模型资源根目录必须有唯一非空 HBM,请核对编译器实际输出.")
     artifact = artifacts[0]
     config = {
         "artifact": "depth_anything_v2_metric_hypersim_vits.hbm",
         "model": ctx.config["model"], "export": ctx.config["export"],
         "evaluation": ctx.config["evaluation"], "quantization": ctx.config["quantization"],
-        "dataset_directory": "datasets/" + ctx.config["evaluation"]["dataset"],
+        "dataset_directory": str(PurePosixPath(ctx.platform["board"]["datasets_root"]) / ctx.config["evaluation"]["dataset"]),
         "identity": {
             "hbm_sha256": fingerprint(artifact),
             "onnx_sha256": fingerprint(ctx.output / "depth_anything_v2_metric_hypersim_vits.onnx"),

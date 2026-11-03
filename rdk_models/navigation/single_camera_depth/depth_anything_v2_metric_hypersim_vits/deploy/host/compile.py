@@ -39,6 +39,11 @@ def main():
     path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     print("[编译] hb_compile,目标 S100 / nash-e,输出与错误直接显示.", flush=True)
     subprocess.run(["hb_compile", "--config", str(path)], cwd=ctx.work, check=True)
+    artifact = working / "depth_anything_v2_metric_hypersim_vits.hbm"
+    if not artifact.is_file() or artifact.stat().st_size == 0:
+        raise FileNotFoundError("编译器未生成非空 HBM.")
+    artifact.replace(ctx.output / artifact.name)
+    print("[编译完成] HBM 已发布至 NAS 模型资源根目录.", flush=True)
 
 
 if __name__ == "__main__":

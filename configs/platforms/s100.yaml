@@ -5,7 +5,8 @@ march: nash-e
 board:
     host: ""
     user: root
-    work_dir: ""
+    models_root: ""
+    datasets_root: ""
 toolchain:
     root: ""
     image: ""
