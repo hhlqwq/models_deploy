@@ -8,7 +8,7 @@ models:
     path: rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim_vits
     source: DepthAnything/Depth-Anything-V2
     platforms:
-      s100: converted
+      s100: board_verified
   - id: mit_bevfusion
     batch: first_batch
     pilot: false
