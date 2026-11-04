@@ -11,6 +11,7 @@ import numpy as np
 from runtime import Runtime
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools.output_metrics import Moments
 from model import (NYUDataset, fingerprint, preprocess, restore_depth,
                    sample_identity, save_json, score_depth)
 
@@ -37,6 +38,7 @@ def main():
     output = root / "examples/output"
     output.mkdir(parents=True, exist_ok=True)
     metrics, numerical = [], []
+    output_metric = Moments()
     try:
         for step, index in enumerate(dataset.test, 1):
             image, truth = dataset.read(int(index))
@@ -49,6 +51,7 @@ def main():
                 expected = reference["depth"][position]
                 if raw.shape != expected.shape:
                     raise ValueError("HBM 与 ONNX 输出形状不一致.")
+                output_metric.update(expected, raw)
                 actual = raw.astype(np.float64).ravel()
                 baseline = expected.astype(np.float64).ravel()
                 norm = np.linalg.norm(actual) * np.linalg.norm(baseline)
@@ -98,10 +101,18 @@ def main():
         "quantization": config["quantization"], "protocol": config["evaluation"],
         "aggregation": "mean_per_image", "accuracy": accuracy,
         "loss_definition": "正值表示 HBM 相对 ONNX 精度下降;误差指标取 HBM-ONNX,delta 指标取 ONNX-HBM",
-        "numerical_comparison": {"samples": numerical,
-                                 "scope": "原始输出,NRMSE=100*RMSE/RMS(ONNX)"},
+        "output_errors": {
+            "scope": "compile 固定三张图片",
+            "compared_calls": output_metric.calls,
+            "comparison_basis": "deployment_output_including_preprocessing",
+            "sample_ids": [f"sample_{i:04d}.png" for i in config["numerical_sample_ids"]],
+            "reference_backend": "onnx_cpu",
+            "nrmse_definition": "100 * RMSE / RMS(reference)",
+            "outputs": {"metric_depth": output_metric.result()},
+        },
         "missing": ["未运行全量654张评价、性能或RSS测试"],
     }
+    print("[输出误差] metric_depth: " + json.dumps(report["output_errors"]["outputs"]["metric_depth"], ensure_ascii=False), flush=True)
     save_json(root / "results/summary_test.json", report)
     print("[子集完成] 100 张任务精度及三张数值误差已保存至 results/summary_test.json.", flush=True)
 

@@ -3,7 +3,7 @@
   "platform": "s100",
   "evaluation_scope": "subset",
   "status": "complete",
-  "timestamp_utc": "2026-11-04T01:55:01.189532+00:00",
+  "timestamp_utc": "2026-11-04T02:33:56.810980+00:00",
   "samples": 100,
   "sample_unit": "image",
   "sample_ids": [
@@ -184,28 +184,27 @@
     }
   },
   "loss_definition": "正值表示 HBM 相对 ONNX 精度下降;误差指标取 HBM-ONNX,delta 指标取 ONNX-HBM",
-  "numerical_comparison": {
-    "samples": [
-      {
-        "sample_id": 1,
-        "cosine_similarity": 0.9923660618184401,
-        "rmse_m": 1.7690979757463154,
-        "nrmse_percent": 43.69631231756475
-      },
-      {
-        "sample_id": 2,
-        "cosine_similarity": 0.9872978909163961,
-        "rmse_m": 0.34375574470562364,
-        "nrmse_percent": 15.951824052999777
-      },
-      {
-        "sample_id": 9,
-        "cosine_similarity": 0.8793652689674036,
-        "rmse_m": 2.154068675535868,
-        "nrmse_percent": 58.00308642726304
-      }
+  "output_errors": {
+    "scope": "compile 固定三张图片",
+    "compared_calls": 3,
+    "comparison_basis": "deployment_output_including_preprocessing",
+    "sample_ids": [
+      "sample_0001.png",
+      "sample_0002.png",
+      "sample_0009.png"
     ],
-    "scope": "原始输出,NRMSE=100*RMSE/RMS(ONNX)"
+    "reference_backend": "onnx_cpu",
+    "nrmse_definition": "100 * RMSE / RMS(reference)",
+    "outputs": {
+      "metric_depth": {
+        "cosine_similarity": 0.9277991229332457,
+        "rmse": 1.6215103575302674,
+        "nrmse_percent": 47.59081926155867,
+        "elements": 1066044,
+        "calls": 3,
+        "unavailable": []
+      }
+    }
   },
   "missing": [
     "未运行全量654张评价、性能或RSS测试"

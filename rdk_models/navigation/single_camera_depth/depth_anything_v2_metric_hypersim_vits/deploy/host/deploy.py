@@ -91,6 +91,9 @@ def main():
     from tools.evaluation import fixed_subset
     from model import restore_depth, sample_identity, score_depth
 
+    repo = Path(__file__).resolve().parents[6]
+    for name in ("output_metrics.py", "evaluation.py", "files.py"):
+        files.append((repo / "tools" / name, "tools/" + name))
     dataset = NYUDataset(ctx.dataset, config["evaluation"], split="test")
     selected = fixed_subset([int(index) for index in dataset.test],
                             config["evaluation"]["compile_samples"],
