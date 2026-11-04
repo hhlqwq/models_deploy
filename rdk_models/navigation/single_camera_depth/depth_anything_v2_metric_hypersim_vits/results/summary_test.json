@@ -332,7 +332,9 @@
         "timing_scope": "同步 Python Runtime 调用,包含绑定和输出转换",
         "memory_scope": "同一百张评分和计时进程的峰值RSS",
         "warmup": 10,
-        "iterations": 100
+        "iterations": 100,
+        "selection_status": "rejected_by_user",
+        "selection_reason": "用户明确舍弃,实测 Runtime 平均耗时463.82 ms"
       }
     ],
     "global_a16_precision_note": "57个主要权重校准节点INT8,25个LayerNorm权重校准节点INT16,Softmax校准节点INT16"

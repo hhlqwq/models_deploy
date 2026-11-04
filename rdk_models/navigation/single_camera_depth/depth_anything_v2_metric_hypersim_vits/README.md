@@ -111,13 +111,12 @@ bash rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim
 | --- | --- | --- | --- |
 | INT8 基线 | NYU test 固定100张<br>δ1,ONNX: 62.96% | **INT8 基线**<br>HBM: 57.96 MB<br>Runtime: 36.54 ms<br>RSS: 109.38 MiB | 0.927799/1.621510/47.5908%/38.18%<br>(-24.78%)<br>[报告](results/summary_test.json) |
 | INT8 + Softmax A16 | NYU test 固定100张<br>δ1,ONNX: 62.96% | **INT8 + Softmax A16**<br>HBM: 62.38 MB<br>Runtime: 40.48 ms<br>RSS: 105.06 MiB | 0.901099/1.659613/48.7091%/24.04%<br>(-38.92%)<br>[报告](results/summary_test.json) |
-| 全局 A16 策略 | NYU test 固定100张<br>δ1,ONNX: 62.96% | **全局 A16 策略**<br>HBM: 129.17 MB<br>Runtime: 463.82 ms<br>RSS: 110.62 MiB | 0.999789/0.071238/2.0908%/63.27%<br>(+0.31%)<br>[报告](results/summary_test.json) |
 
 三组使用相同100张训练图校准、相同100张测试图评分,输出误差覆盖同样三张输入.计时预热10次,重复同一输入100次.耗时为同步 Python Runtime 调用,包含绑定和输出转换,峰值RSS覆盖同一评分与计时进程.括号为板端减浮点的百分点差值,沿用MTK的百分号写法.
 
 全局A16策略的57个主要权重校准节点为INT8,25个LayerNorm权重校准节点为INT16,Softmax校准节点为INT16.
 
-当前INT8作为部署基线,最终保留方案等待用户选择.全局A16在该子集上接近浮点精度,平均调用耗时约为INT8的12.70倍.仅Softmax A16在本轮的精度和速度均未超过INT8基线.
+当前INT8作为部署基线,最终保留方案等待用户选择.全局A16方案已由用户明确舍弃,实测记录保存在报告中并标记为 rejected_by_user.仅Softmax A16在本轮的精度和速度均未超过INT8基线.
 
 ![NYU 1 的 INT8 HBM 深度示例](examples/output/sample_0001_depth.jpg)
 
