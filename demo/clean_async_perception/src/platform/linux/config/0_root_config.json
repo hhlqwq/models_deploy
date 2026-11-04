@@ -1,0 +1,11 @@
+{
+  "program_name": "Shunyu Async Perception",
+  "task_yolox": {
+    "enable": true,
+    "config_path": "yolox_config.json"
+  },
+  "task_mobilenetv2": {
+    "enable": true,
+    "config_path": "mobilenetv2_config.json"
+  }
+}

@@ -1,0 +1,9 @@
+**
+!dep/
+!dep/linux-x86_64/
+!dep/linux-x86_64/orbbec_sdk/
+!dep/linux-x86_64/orbbec_sdk/include/**
+!dep/linux-x86_64/orbbec_sdk/lib/**
+!tools/
+!tools/orbbec_ros2_publisher/
+!tools/orbbec_ros2_publisher/**

@@ -15,7 +15,11 @@ def context():
     config = yaml.safe_load((model / "config.yaml").read_text(encoding="utf-8"))
     platform = load_config()
     output = Path(platform["storage"]["models_root"]) / config["model"]["resource_directory"]
+    dataset = Path(platform["storage"]["dataset_root"]) / config["evaluation"]["dataset"]
+    # 官方压缩包可能在解包目录内保留 LibriSpeech/test-clean 层级.
+    archive_root = dataset / "LibriSpeech/test-clean"
+    if archive_root.is_dir():
+        dataset = archive_root
     return SimpleNamespace(model=model, config=config, platform=platform, output=output,
-        assets=output / "build/reference",
-        dataset=Path(platform["storage"]["dataset_root"]) / config["evaluation"]["dataset"],
+        assets=output / config["model"]["runtime_resources"], dataset=dataset,
         work=Path("/tmp/hailongcodex") / date.today().isoformat() / "s100/whisper_tiny")

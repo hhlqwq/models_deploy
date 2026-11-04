@@ -1,0 +1,7 @@
+{
+  "program_name": "Intel Async Perception",
+  "task_yolo": {
+    "enable": true,
+    "config_path": "yolo_config.json"
+  }
+}

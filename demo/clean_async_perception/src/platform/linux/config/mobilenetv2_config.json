@@ -1,0 +1,6 @@
+{
+  "thread_num": 1,
+  "task_queue_limit": 10,
+  "model_path": "../models/mobilenetv2/mobilenetv2.xml",
+  "device": "NPU"
+}

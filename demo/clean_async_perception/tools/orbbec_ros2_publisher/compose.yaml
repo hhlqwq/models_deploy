@@ -1,0 +1,15 @@
+services:
+  orbbec-image-publisher:
+    image: orbbec-ros2-image-publisher:part2
+    container_name: orbbec-image-publisher
+    build:
+      context: ../..
+      dockerfile: tools/orbbec_ros2_publisher/Dockerfile
+    network_mode: host
+    privileged: true
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+    environment:
+      ROS_DOMAIN_ID: "0"
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+    restart: unless-stopped

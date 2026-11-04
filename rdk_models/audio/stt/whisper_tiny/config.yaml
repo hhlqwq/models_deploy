@@ -1,7 +1,9 @@
 model:
     resource_directory: audio/stt/whisper_tiny
+    runtime_resources: original/runtime_resources
 board:
-    deploy_directory: audio/stt/whisper_tiny
+    deploy_directory: whisper_tiny
+    dataset_directory: librispeech/test-clean
 evaluation:
     dataset: LibriSpeech/test-clean
     compile_samples: 50

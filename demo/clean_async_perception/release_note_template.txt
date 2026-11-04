@@ -1,0 +1,33 @@
+# async_perception 发布说明
+
+## 发布信息
+
+- 版本：{{VERSION}}
+- 发布类型：{{RELEASE_TYPE}}
+- 发布时间：{{RELEASE_DATE}}
+- 基线提交：{{BASE_COMMIT}}
+- 目标提交：{{TARGET_COMMIT}}
+
+<!-- ReleaseMetadata Version={{VERSION}} Type={{RELEASE_TYPE_CODE}} Base={{BASE_COMMIT}} Target={{TARGET_COMMIT}} -->
+
+## Git 提交历史
+
+<!-- GitHistory Begin -->
+{{GIT_HISTORY}}
+<!-- GitHistory End -->
+
+## 工作区结论
+
+- {{WORKTREE_CONCLUSION}}
+
+## 未提交变更
+
+<!-- UncommittedChanges Begin -->
+{{UNCOMMITTED_CHANGES}}
+<!-- UncommittedChanges End -->
+
+<!-- Value FormalReleaseType:正式发布 -->
+<!-- Value TemporaryReleaseType:未提交临时版本 -->
+<!-- Value FormalConclusion:本发布包基于干净工作区构建，发布说明由发布脚本自动生成。 -->
+<!-- Value TemporaryConclusion:本发布包包含未提交工作区变更，仅用于临时内部验证，不属于正式受控发布。 -->
+<!-- Value None:无 -->

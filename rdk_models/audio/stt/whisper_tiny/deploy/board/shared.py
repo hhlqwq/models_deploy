@@ -53,7 +53,11 @@ def decode_steps(run, features, config, limit=MAX_TOKEN_LENGTH):
     """逐步生成真实自回归输入和输出,供校准及推理共用."""
     initial = [int(value) for value in config["initial"].split(",")]
     caches = {name: np.zeros(INPUT_SHAPES[name], np.float32) for name in CACHE_NAMES}
+    maximum = int(config["max_generated_tokens"])
+    if not initial or not 0 < maximum <= MAX_TOKEN_LENGTH - len(initial):
+        raise ValueError("Whisper 提示词与生成长度配置不符.")
     token = initial[0]
+    generated_count = 0
     for position in range(min(limit, MAX_TOKEN_LENGTH)):
         feeds = feeds_for_step(token, position, features, caches)
         outputs = run(feeds)
@@ -64,8 +68,9 @@ def decode_steps(run, features, config, limit=MAX_TOKEN_LENGTH):
         else:
             token = next_token(outputs["logits"], config, first=position + 1 == len(initial))
             generated = token
+            generated_count += 1
         yield feeds, generated
-        if generated == int(config["eot"]):
+        if generated == int(config["eot"]) or generated_count >= maximum:
             break
 
 

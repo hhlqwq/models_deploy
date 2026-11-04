@@ -34,6 +34,11 @@ def calibrate(ctx, stage, work):
     paths = sorted(ctx.dataset.rglob("*.flac"))[:count]
     if len(paths) != count:
         raise ValueError("Whisper 校准音频数量不足.")
+    calibration_root = work / "calibration"
+    if calibration_root.is_symlink() or not calibration_root.resolve().is_relative_to(ctx.work.resolve()):
+        raise ValueError("校准目录越界或为符号链接.")
+    if calibration_root.exists():
+        shutil.rmtree(calibration_root)
     filters, rules = assets(ctx.assets)
     if stage == "decoder_step":
         encoder = session(ctx.output / "tiny_encoder.onnx")
