@@ -208,5 +208,133 @@
   },
   "missing": [
     "未运行全量654张评价、性能或RSS测试"
-  ]
+  ],
+  "quantization_comparison": {
+    "selection": "pending_user_choice",
+    "calibration_samples": 100,
+    "samples": 100,
+    "variants": [
+      {
+        "variant": "int8",
+        "samples": 100,
+        "identity": {
+          "onnx_sha256": "38345f572db05445840e3fd0aa221553594445629f0f5127e892a9081390089a",
+          "hbm_sha256": "ddcce8dd4bdcb3d061b4fa86eb5611b4b4a114e1712876866368820a6721f7d8"
+        },
+        "artifact_bytes": 57961064,
+        "accuracy": {
+          "abs_rel": 0.3241144607275664,
+          "rmse_m": 1.1111559944886045,
+          "log10": 0.15551567592820267,
+          "delta1": 0.38178495975855126,
+          "delta2": 0.6822706656606304,
+          "delta3": 0.8639943829644534
+        },
+        "float_accuracy": {
+          "abs_rel": 0.23020762646713588,
+          "rmse_m": 0.636758852798536,
+          "log10": 0.08679168675577605,
+          "delta1": 0.6296301978537894,
+          "delta2": 0.9481841046277666,
+          "delta3": 0.9909249664654594
+        },
+        "output_errors": {
+          "cosine_similarity": 0.9277991229332457,
+          "rmse": 1.6215103575302674,
+          "nrmse_percent": 47.59081926155867,
+          "elements": 1066044,
+          "calls": 3,
+          "unavailable": []
+        },
+        "runtime_call_mean_ms": 36.53535065241158,
+        "runtime_call_p95_ms": 36.86155183240771,
+        "peak_rss_mib": 109.375,
+        "timing_scope": "同步 Python Runtime 调用,包含绑定和输出转换",
+        "memory_scope": "同一百张评分和计时进程的峰值RSS",
+        "warmup": 10,
+        "iterations": 100
+      },
+      {
+        "variant": "softmax_a16",
+        "samples": 100,
+        "identity": {
+          "onnx_sha256": "38345f572db05445840e3fd0aa221553594445629f0f5127e892a9081390089a",
+          "hbm_sha256": "bbcc590c6b4ec08385291ab5ab21b72e5d8bea7d7666a708c71cefb9040bfccc"
+        },
+        "artifact_bytes": 62377576,
+        "accuracy": {
+          "abs_rel": 0.7875397716989476,
+          "rmse_m": 1.6130193976219545,
+          "log10": 0.2262860278072277,
+          "delta1": 0.2404050134138162,
+          "delta2": 0.46275972501676726,
+          "delta3": 0.6866613849765258
+        },
+        "float_accuracy": {
+          "abs_rel": 0.23020762646713588,
+          "rmse_m": 0.636758852798536,
+          "log10": 0.08679168675577605,
+          "delta1": 0.6296301978537894,
+          "delta2": 0.9481841046277666,
+          "delta3": 0.9909249664654594
+        },
+        "output_errors": {
+          "cosine_similarity": 0.9010987441312563,
+          "rmse": 1.6596126623351644,
+          "nrmse_percent": 48.709109929883816,
+          "elements": 1066044,
+          "calls": 3,
+          "unavailable": []
+        },
+        "runtime_call_mean_ms": 40.48207269050181,
+        "runtime_call_p95_ms": 40.80899991095066,
+        "peak_rss_mib": 105.0625,
+        "timing_scope": "同步 Python Runtime 调用,包含绑定和输出转换",
+        "memory_scope": "同一百张评分和计时进程的峰值RSS",
+        "warmup": 10,
+        "iterations": 100
+      },
+      {
+        "variant": "global_a16",
+        "samples": 100,
+        "identity": {
+          "onnx_sha256": "38345f572db05445840e3fd0aa221553594445629f0f5127e892a9081390089a",
+          "hbm_sha256": "f95b7a144a9df9668bd6d0406bd5ff7661007fc3507ee36a6b58b17d6f40f160"
+        },
+        "artifact_bytes": 129165096,
+        "accuracy": {
+          "abs_rel": 0.2285376139813626,
+          "rmse_m": 0.6370788852817405,
+          "log10": 0.0863228977683528,
+          "delta1": 0.6327151240778002,
+          "delta2": 0.9494237927565393,
+          "delta3": 0.9914216968477532
+        },
+        "float_accuracy": {
+          "abs_rel": 0.23020762646713588,
+          "rmse_m": 0.636758852798536,
+          "log10": 0.08679168675577605,
+          "delta1": 0.6296301978537894,
+          "delta2": 0.9481841046277666,
+          "delta3": 0.9909249664654594
+        },
+        "output_errors": {
+          "cosine_similarity": 0.9997891801906006,
+          "rmse": 0.07123804669736727,
+          "nrmse_percent": 2.0908142764407835,
+          "elements": 1066044,
+          "calls": 3,
+          "unavailable": []
+        },
+        "runtime_call_mean_ms": 463.8237562403083,
+        "runtime_call_p95_ms": 465.44809667393565,
+        "peak_rss_mib": 110.625,
+        "timing_scope": "同步 Python Runtime 调用,包含绑定和输出转换",
+        "memory_scope": "同一百张评分和计时进程的峰值RSS",
+        "warmup": 10,
+        "iterations": 100
+      }
+    ],
+    "global_a16_precision_note": "57个主要权重校准节点INT8,25个LayerNorm权重校准节点INT16,Softmax校准节点INT16"
+  }
 }

@@ -13,7 +13,7 @@
 与 MTK 目录下 depth_anything_v2_small 的相对深度版本分开维护,不得复用其 DA-2K 历史结果作为米制深度评价.
 校准使用 NYU Depth V2 标准训练划分中 seed=17 选取的 100 张图像,正式评价使用互斥的标准测试划分 654 张.使用米制真值、固定裁剪与有效深度范围,不进行逐图尺度对齐,契约见 [模型卡](model_card.md).
 
-当前 HBM 已采用 INT8 PTQ 并完成 100 张 NYU test 子集验证，文件大小为 57,961,064 字节。公开输入输出均为 FP32。
+当前暂存 HBM 为 INT8 PTQ 基线,正式保留方案等待精度与性能对照后由用户选择.该基线已完成 100 张 NYU test 子集验证，文件大小为 57,961,064 字节。公开输入输出均为 FP32。
 
 ## 单张 RGB 图片推理
 
@@ -109,22 +109,15 @@ bash rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim
 
 | 量化版本 | 数据集 / 指标 / 参考基线 | 量化方式 / 编译与性能 | **CosSim**/RMSE/NRMSE/精度 |
 | --- | --- | --- | --- |
-| 当前 S100 板端模型 | NYU test 固定100张子集<br>δ1,ONNX: 62.96% | **INT8 PTQ**<br>HBM: 57.96 MB<br>BPU耗时: —<br>RSS: — | 0.927799/1.621510/47.5908%/38.18%<br>(-24.78%)<br>[报告](results/summary_test.json) |
+| INT8 基线 | NYU test 固定100张<br>δ1,ONNX: 62.96% | **INT8 基线**<br>HBM: 57.96 MB<br>Runtime: 36.54 ms<br>RSS: 109.38 MiB | 0.927799/1.621510/47.5908%/38.18%<br>(-24.78%)<br>[报告](results/summary_test.json) |
+| INT8 + Softmax A16 | NYU test 固定100张<br>δ1,ONNX: 62.96% | **INT8 + Softmax A16**<br>HBM: 62.38 MB<br>Runtime: 40.48 ms<br>RSS: 105.06 MiB | 0.901099/1.659613/48.7091%/24.04%<br>(-38.92%)<br>[报告](results/summary_test.json) |
+| 全局 A16 策略 | NYU test 固定100张<br>δ1,ONNX: 62.96% | **全局 A16 策略**<br>HBM: 129.17 MB<br>Runtime: 463.82 ms<br>RSS: 110.62 MiB | 0.999789/0.071238/2.0908%/63.27%<br>(+0.31%)<br>[报告](results/summary_test.json) |
 
-CosSim、输出 RMSE、NRMSE 覆盖三张固定图片,RMSE 单位米,NRMSE 单位百分比.精度只展示100张子集的 δ1.括号为板端减浮点的百分点差值,沿用 MTK 总览的 `%` 写法.
+三组使用相同100张训练图校准、相同100张测试图评分,输出误差覆盖同样三张输入.计时预热10次,重复同一输入100次.耗时为同步 Python Runtime 调用,包含绑定和输出转换,峰值RSS覆盖同一评分与计时进程.括号为板端减浮点的百分点差值,沿用MTK的百分号写法.
 
-### 量化候选实验
+全局A16策略的57个主要权重校准节点为INT8,25个LayerNorm权重校准节点为INT16,Softmax校准节点为INT16.
 
-以下候选统一使用8张训练图校准、相同12张 NYU test 图片做软件仿真.这些记录只有 δ1 任务精度,缺失的输出误差以 `—` 标记.浮点参考为68.88%,括号按原始浮点数值计算差值.仿真精度和上面的100张板端结果分别对应各自范围.
-
-| 量化版本 | 数据集 / 指标 / 参考基线 | 量化方式 / 编译与性能 | **CosSim**/RMSE/NRMSE/精度 |
-| --- | --- | --- | --- |
-| 同条件 INT8 对照 | NYU test 12张<br>δ1,FP32: 68.88% | INT8,max<br>软件仿真 | —/—/—/28.66%<br>(-40.21%) |
-| 99.995%截断,非对称 | NYU test 12张<br>δ1,FP32: 68.88% | INT8,max<br>软件仿真 | —/—/—/30.59%<br>(-38.28%) |
-| 99.995%截断,对称 | NYU test 12张<br>δ1,FP32: 68.88% | INT8,max<br>软件仿真 | —/—/—/30.59%<br>(-38.29%) |
-| 99.9%截断,非对称 | NYU test 12张<br>δ1,FP32: 68.88% | INT8,max<br>软件仿真 | —/—/—/36.34%<br>(-32.53%) |
-| 仅 Softmax 提高激活位宽 | NYU test 12张<br>δ1,FP32: 68.88% | INT8 权重,Softmax A16<br>软件仿真 | —/—/—/24.19%<br>(-44.68%) |
-| 整段注意力提高激活位宽 | NYU test 12张<br>δ1,FP32: 68.88% | INT8 权重,注意力请求 A16<br>软件仿真 | —/—/—/2.38%<br>(-66.49%) |
+当前INT8作为部署基线,最终保留方案等待用户选择.全局A16在该子集上接近浮点精度,平均调用耗时约为INT8的12.70倍.仅Softmax A16在本轮的精度和速度均未超过INT8基线.
 
 ![NYU 1 的 INT8 HBM 深度示例](examples/output/sample_0001_depth.jpg)
 
