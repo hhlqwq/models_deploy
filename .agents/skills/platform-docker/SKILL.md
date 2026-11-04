@@ -7,7 +7,7 @@ description: 为 MTK、RDK 及新增平台构建、重建和验收可复现的 D
 
 ## 交付边界
 
-遵守根目录 AGENTS.md.先读取目标平台 docker/ 下的 Dockerfile、依赖声明、构建/创建/进入入口和本地配置.核对当前镜像 ID、容器挂载、普通用户及 Git 状态.不把不同平台的 Python/SDK 版本强制统一.
+模型交付要求见 [model-deploy skill](../model-deploy/SKILL.md),环境规则仅在本 skill 维护.先读取目标平台 docker/ 下的 Dockerfile、依赖声明、构建/创建/进入入口和本地配置.核对当前镜像 ID、容器挂载、普通用户及 Git 状态.不把不同平台的 Python/SDK 版本强制统一.
 
 ## 修改与构建
 
