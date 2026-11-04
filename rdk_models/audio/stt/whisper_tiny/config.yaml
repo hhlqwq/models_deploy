@@ -1,0 +1,12 @@
+model:
+    resource_directory: audio/stt/whisper_tiny
+board:
+    deploy_directory: audio/stt/whisper_tiny
+evaluation:
+    dataset: LibriSpeech/test-clean
+    compile_samples: 50
+    numerical_samples: 3
+quantization:
+    precision: w8a16
+    calibration_samples: 8
+    decoder_steps: 32

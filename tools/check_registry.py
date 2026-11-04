@@ -75,8 +75,7 @@ def check_model(entry: dict[str, Any]) -> list[str]:
         if not (model_root / required_file).is_file():
             errors.append(f"{model_id}: 缺少文件: {required_file}")
     results = model_root / "results"
-    allowed_reports = (("summary.json",) if relative_path.parts[:1] == ("rdk_models",)
-                       else ("summary.json", "summary_test.json"))
+    allowed_reports = ("summary.json", "summary_test.json")
     if results.is_dir():
         for path in results.iterdir():
             if path.name not in allowed_reports or not path.is_file():

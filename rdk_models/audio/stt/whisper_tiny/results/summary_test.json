@@ -1,0 +1,169 @@
+{
+  "timestamp_utc": "2026-11-04T03:01:22.807533+00:00",
+  "model": "whisper_tiny",
+  "platform": "S100 / nash-e",
+  "evaluation_scope": "subset",
+  "status": "complete",
+  "samples": 50,
+  "sample_unit": "audio",
+  "sample_ids": [
+    "1089-134686-0008",
+    "1089-134691-0023",
+    "1188-133604-0000",
+    "121-121726-0006",
+    "121-127105-0034",
+    "1284-1180-0009",
+    "1284-134647-0007",
+    "1320-122617-0035",
+    "1580-141083-0046",
+    "1580-141084-0045",
+    "1995-1837-0005",
+    "2094-142345-0028",
+    "2300-131720-0020",
+    "237-134493-0005",
+    "237-134500-0039",
+    "260-123288-0017",
+    "2830-3980-0007",
+    "2830-3980-0060",
+    "2961-961-0013",
+    "3570-5696-0004",
+    "3575-170457-0046",
+    "3729-6852-0042",
+    "4446-2271-0009",
+    "4446-2275-0000",
+    "4507-16021-0007",
+    "4970-29093-0000",
+    "4970-29095-0029",
+    "4992-41797-0022",
+    "5105-28240-0023",
+    "5142-33396-0031",
+    "5142-36377-0015",
+    "5639-40744-0035",
+    "5683-32866-0028",
+    "61-70968-0024",
+    "61-70970-0014",
+    "672-122797-0026",
+    "6829-68769-0004",
+    "6829-68771-0003",
+    "6930-75918-0019",
+    "6930-81414-0022",
+    "7021-85628-0016",
+    "7127-75947-0011",
+    "7176-88083-0023",
+    "7729-102255-0002",
+    "8224-274381-0008",
+    "8230-279154-0029",
+    "8455-210777-0038",
+    "8463-294825-0005",
+    "8463-294828-0038",
+    "8555-292519-0006"
+  ],
+  "hbm": {
+    "encoder": "b9d0b6b4de4c502ee67d76134ce3c434b9e11ec7f3884cc462571b14f4f32b4c",
+    "decoder_step": "1fa1c9d6bbdacf10f2fb3fe414728e1ae697a03597057cc9f83628f61b3ea853"
+  },
+  "precision_requested": "w8a16",
+  "precision_audit": {
+    "encoder": {
+      "compiler_backend_operations": {
+        "bpu": 362
+      },
+      "constant_affine": {
+        "Conv": 26
+      },
+      "activation": "int16",
+      "weight": "int8",
+      "dynamic_matmul_inputs": {
+        "int16/int8": 8
+      },
+      "hbm_sha256": "b9d0b6b4de4c502ee67d76134ce3c434b9e11ec7f3884cc462571b14f4f32b4c",
+      "onnx_sha256": "9f90c8df8bfe6baf227722938492a2a7ca2ec5cdc8d3f17e6dab9145d734b30c"
+    },
+    "decoder_step": {
+      "compiler_backend_operations": {
+        "bpu": 637
+      },
+      "constant_affine": {
+        "Conv": 43
+      },
+      "activation": "int16",
+      "weight": "int8",
+      "dynamic_matmul_inputs": {
+        "int16/int8": 16
+      },
+      "hbm_sha256": "1fa1c9d6bbdacf10f2fb3fe414728e1ae697a03597057cc9f83628f61b3ea853",
+      "onnx_sha256": "cab556d48284019924017eb6cfb6d10956b30552a035635a1e724c17122768f1"
+    }
+  },
+  "protocol": {
+    "dataset": "LibriSpeech test-clean",
+    "decoding": "greedy",
+    "cache_size": 256,
+    "max_token_length": 448,
+    "normalization": "OpenAI Whisper EnglishTextNormalizer v20250625",
+    "aggregation": "corpus_word_edit_distance"
+  },
+  "accuracy": {
+    "WER": {
+      "fp32_accuracy": 0.07358156028368794,
+      "npu_accuracy": 0.07358156028368794,
+      "higher_is_better": false,
+      "accuracy_loss": 0.0,
+      "accuracy_loss_percentage_points": 0.0
+    }
+  },
+  "reference_words": 1128,
+  "word_errors": 83,
+  "reached_eot": 50,
+  "decoder_calls": 1572,
+  "examples": [
+    {
+      "id": "1089-134686-0008",
+      "reference": "THE CHAOS IN WHICH HIS ARDOUR EXTINGUISHED ITSELF WAS A COLD INDIFFERENT KNOWLEDGE OF HIMSELF",
+      "fp32": " The chaos in which his order extinguished itself was a cold indifference knowledge of himself.",
+      "bpu": " The chaos in which his ardor extinguished itself was a cold in different knowledge of himself."
+    },
+    {
+      "id": "1089-134691-0023",
+      "reference": "IT WAS A PAIN TO SEE THEM AND A SWORD LIKE PAIN TO SEE THE SIGNS OF ADOLESCENCE THAT MADE REPELLENT THEIR PITIABLE NAKEDNESS",
+      "fp32": " It was a pain to see them and a sword-like pain to see the signs of adolescents that made repellent their pitiful nakedness.",
+      "bpu": " It was a pain to see them and a sword-like pain to see the signs of adolescence that made repellent their pitiful nakedness."
+    },
+    {
+      "id": "1188-133604-0000",
+      "reference": "YOU WILL FIND ME CONTINUALLY SPEAKING OF FOUR MEN TITIAN HOLBEIN TURNER AND TINTORET IN ALMOST THE SAME TERMS",
+      "fp32": " You will find me continually speaking of foreman, Titian, Holbein, Turner, and Tintarat, and almost the same terms.",
+      "bpu": " You will find me continually speaking of foreman, Titian, Holbein, Turner, and Tintarat, and almost the same terms."
+    }
+  ],
+  "output_errors": {
+    "compared_calls": 3,
+    "reference_backend": "onnx_cpu",
+    "output": "audio_features",
+    "comparison_basis": "deployment_output_including_preprocessing",
+    "nrmse_definition": "100 * RMSE / RMS(reference)",
+    "per_sample": [
+      {
+        "id": "1089-134686-0008",
+        "cosine_similarity": 0.9961475476683745,
+        "rmse": 0.11274344161459168,
+        "nrmse_percent": 8.813127267134458
+      },
+      {
+        "id": "1089-134691-0023",
+        "cosine_similarity": 0.9972574296005645,
+        "rmse": 0.0964781973229694,
+        "nrmse_percent": 7.440634564231563
+      },
+      {
+        "id": "1188-133604-0000",
+        "cosine_similarity": 0.9965786653101723,
+        "rmse": 0.1086437209412839,
+        "nrmse_percent": 8.311910707878415
+      }
+    ]
+  },
+  "missing": [
+    "未执行全量2620条、性能和峰值RSS评价"
+  ]
+}

@@ -1,0 +1,10 @@
+source_repository=https://github.com/openai/whisper
+source_revision=v20250625
+source_weights=https://openaipublic.azureedge.net/main/whisper/models/65147644a518d12f04e32d6f3b26facc3f8dd46e5390956a9424a650c0ce22b9/tiny.pt
+reuse_source=Existing MTK Whisper-Tiny weights, FP32 ONNX, Mel filters and decode rules
+whisper_normalizers=https://github.com/openai/whisper/tree/v20250625/whisper/normalizers
+more_itertools_version=10.7.0
+more_itertools_source=https://github.com/more-itertools/more-itertools/tree/v10.7.0
+normalizer_packaging=Existing official source copied with licenses; optional regex import deferred until split_letters is requested, which English normalization does not use
+delivery_reference=https://developer.d-robotics.cc/case_doc/basic/speech_to_text
+dataset=https://www.openslr.org/12/
