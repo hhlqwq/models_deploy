@@ -12,4 +12,4 @@
 - 指标: AbsRel、RMSE(米)、log10、delta1/2/3;浮点 ONNX 与 BPU 使用相同预后处理和样本.
 - 性能: Python Runtime 同步调用与端到端耗时分别记录;前者含绑定开销,不等于纯 BPU 设备耗时.
 - 子集评价: NYU test 中固定间隔选择 100 张,保留三个示例,同协议比较 ONNX/HBM,发布 results/summary_test.json.仅对三个示例进行原始输出数值比较.
-- 当前证据: ONNX IR9/opset17 导出及 CPU 单图通路已验证;本次 INT8 编译与100张板端子集验证进行中,尚未发布新指标.不复用旧版本指标.已有 NAS 权重的官方发布一致性仍待核实.
+- 当前证据: ONNX IR9/opset17 导出及 CPU 单图通路已验证;INT8 HBM 已完成 100 张板端子集验证,结果见 results/summary_test.json.已有 NAS 权重的官方发布一致性仍待核实.

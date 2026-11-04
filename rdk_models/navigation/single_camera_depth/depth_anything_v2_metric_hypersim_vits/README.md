@@ -13,7 +13,7 @@
 与 MTK 目录下 depth_anything_v2_small 的相对深度版本分开维护,不得复用其 DA-2K 历史结果作为米制深度评价.
 校准使用 NYU Depth V2 标准训练划分中 seed=17 选取的 100 张图像,正式评价使用互斥的标准测试划分 654 张.使用米制真值、固定裁剪与有效深度范围,不进行逐图尺度对齐,契约见 [模型卡](model_card.md).
 
-当前交付采用 INT8 PTQ,使用 NYU train 固定 100 张校准.正在重新量化编译并补齐 NYU test 固定 100 张子集验证,不得用旧版本示例或指标作为本次 INT8 结果.公开输入输出仍为 FP32,不代表模型内部采用浮点计算.
+当前 HBM 已采用 INT8 PTQ 并完成 100 张 NYU test 子集验证，文件大小为 57,961,064 字节。公开输入输出均为 FP32。
 
 ## 单张 RGB 图片推理
 
@@ -105,7 +105,20 @@ bash rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim
 
 ## 当前子集结果
 
-INT8 的 100 张同协议验证尚未完成,本段在实际运行后更新.不保留旧量化版本的三样本成绩作为当前结果.
+固定 100 张 NYU test 子集实测见 [summary_test.json](results/summary_test.json)。
+
+| 指标 | ONNX | INT8 HBM |
+| --- | ---: | ---: |
+| abs_rel | 0.230208 | 0.324114 |
+| rmse_m | 0.636759 | 1.111156 |
+| log10 | 0.086792 | 0.155516 |
+| delta1 | 0.629630 | 0.381785 |
+| delta2 | 0.948184 | 0.682271 |
+| delta3 | 0.990925 | 0.863994 |
+
+INT8 子集的 δ1 下降 24.78 个百分点，RMSE 增加 0.474 米。
+
+![NYU 1 的 INT8 HBM 深度示例](examples/output/sample_0001_depth.jpg)
 
 ## NAS 交付文件与板端目录
 
