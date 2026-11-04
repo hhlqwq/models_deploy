@@ -1,0 +1,29 @@
+# Qwen3 原始资源与评价协议;真实主机、SDK 和 NAS 根目录由本地平台配置提供.
+model:
+    resource_directory: llm/qwen3_0.6b
+    source_directory: original
+board:
+    deploy_directory: qwen3_0_6b
+conversion:
+    context: 2048
+    prefill: 256
+    max_new_tokens: 128
+quantization:
+    # 沿用 SDK Qwen3 QLG 三步配方及 nash-e 静态规则,不改为 MTK W4A16.
+    weight_bits: 4
+    activation_bits: 8
+    calibration_steps: 50
+data:
+    wikitext_directory: wikitext/wikitext-2-raw-v1
+    wikitext_train: train-00000-of-00001.parquet
+    wikitext_test: test-00000-of-00001.parquet
+    mmlu_test: mmlu/all/test-00000-of-00001.parquet
+evaluation:
+    subset_mmlu_questions: 100
+    mmlu_questions: 1000
+    mmlu_seed: 17
+    subset_wikitext_blocks: 16
+    wikitext_block_tokens: 128
+    performance_input_tokens: 128
+    performance_max_generated_tokens: 128
+    reference_device: cuda
