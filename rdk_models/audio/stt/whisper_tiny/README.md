@@ -26,7 +26,7 @@
 bash deploy/compile.sh
 ```
 
-入口复用已有的 `tiny_encoder.onnx`、`tiny_decoder_step.onnx` 和配套预处理、解码与文本资源.分别量化编译两个 HBM,核对实际位宽及执行位置,运行固定 50 条子集的浮点推理,上传模型、同子集精度参考、三条数值参考及必要音频.
+入口复用已有的 `tiny_encoder.onnx`、`tiny_decoder_step.onnx` 和配套预处理、解码与文本资源.分别量化编译两个 HBM,核对实际位宽及执行位置,与 MTK 按同一规则选择 50 条音频,完成浮点推理后上传模型、同子集精度参考、三条数值参考及必要音频.
 
 上传完成后,登录 S100,在本模型部署目录执行:
 
@@ -34,7 +34,7 @@ bash deploy/compile.sh
 bash compile.sh
 ```
 
-板端保存子集结果到 `results/summary_test.json`,生成 `examples/output/transcripts.json`.对应的三条原始音频位于 `examples/input/`.
+板端保存子集结果到 `results/summary_test.json`,生成 `examples/output/transcripts.json`.对应的三条原始音频位于 `examples/input/`.逐条预测及汇总所需过程数据覆盖保存在本模型 `build/work/`.
 
 ## 第二步 独立评价
 
@@ -50,15 +50,17 @@ bash deploy/evaluate.sh
 bash evaluate.sh
 ```
 
-板端使用已有 HBM 完成同范围评价并生成 `results/summary.json`.性能记录包括 Encoder 与 Decoder 的同步 HBM 调用平均耗时、端到端 RTF 和推理进程峰值 RSS.同步 HBM 调用包含 Runtime 绑定等开销;RSS 表示进程内存,纯 BPU 设备耗时及 BPU 专用内存需另行测量.
+板端使用已有 HBM 完成同范围评价并生成 `results/summary.json`.性能记录包括整条音频的 Encoder 加全部 Decoder 调用总耗时及 P95、Encoder 平均耗时、Decoder 单步均值、首 Token 调用耗时、模型调用 RTF、端到端 RTF 和推理进程峰值 RSS.同步 HBM 调用包含 Runtime 绑定等开销;RSS 表示进程内存,纯 BPU 设备耗时及 BPU 专用内存需另行测量.
 
 ## 数据与精度评测
 
-数据集为 [LibriSpeech test-clean](https://www.openslr.org/12/),保留官方 FLAC 音频及 `*.trans.txt`,共 2620 条.校准使用按路径排序的前 8 条音频;compile 子集排除这 8 条后固定间隔抽取 50 条,并保留可用的仓库语音示例.完整 test-clean 中包含校准音频,全量结果需按这一范围解释.
+数据集为 [LibriSpeech test-clean](https://www.openslr.org/12/),保留官方 FLAC 音频及 `*.trans.txt`,共 2620 条.校准使用按路径排序的前 8 条音频;compile 与 MTK 共用固定间隔规则抽取 50 条,保留相同语音示例.子集与校准存在重叠.完整 test-clean 中包含校准音频,全量结果需按这一范围解释.
 
 两端使用相同音频、16 kHz 单声道 PCM16、30 秒截补齐、80 维 Log-Mel、滑动 Cache 和贪心解码规则.文本使用 OpenAI Whisper `EnglishTextNormalizer` 规范化,WER 为整个评价范围的词级编辑距离总和除以参考词数总和.
 
-### 子集精度结果
+### 已有子集记录
+
+下表和展示音频来自调整前排除校准音频的 50 条实测.当前入口已统一为 MTK 的选样规则,新的子集结果待运行后更新.
 
 | 指标 | 浮点 ONNX | S100 W8A16 |
 | --- | ---: | ---: |
@@ -69,7 +71,7 @@ bash evaluate.sh
 | WER 损失 | — | +0.0000 个百分点 |
 | 正常遇到 EOT | — | 50/50 |
 
-WER 越低越好,精度损失为 `100 × (BPU WER - ONNX WER)`,正值表示变差.该子集的 WER 相同,当前采用 W8A16.完整 2620 条精度、正式性能和 RSS 尚待评价.实际子集结果见 [summary_test.json](results/summary_test.json).
+WER 越低越好,精度损失为 `100 × (BPU WER - ONNX WER)`,正值表示变差.已有记录的 WER 相同,当前采用 W8A16.完整 2620 条精度、正式性能和 RSS 尚待评价.实际子集结果见 [summary_test.json](results/summary_test.json).
 
 ### 输出误差统计
 
@@ -85,7 +87,7 @@ compile 对三条固定音频比较 Encoder 原始 `audio_features` 输出,包�
 
 ## 效果示例
 
-以下音频选自相同的 50 条子集,识别文本来自真实 S100 W8A16 推理.原始音频可播放或下载,完整的参考、浮点和板端转写保存在 [transcripts.json](examples/output/transcripts.json).
+以下音频对应上述已有子集记录,识别文本来自真实 S100 W8A16 推理.原始音频可播放或下载,完整的参考、浮点和板端转写保存在 [transcripts.json](examples/output/transcripts.json).
 
 ```text
 examples/
@@ -142,26 +144,49 @@ examples/
 部署目录由本地 S100 配置指定,布局为:
 
 ```text
-部署目录/
-├── compile.sh
-├── evaluate.sh
-├── config.json
-├── tiny_encoder_w8a16.hbm
-├── tiny_decoder_step_w8a16.hbm
-├── board/
-│   ├── evaluate.py
-│   ├── decoder.py
-│   └── shared.py
-├── build/reference/             # 精度参考、数值参考及运行所需文本资源.
-├── examples/
-│   ├── input/                   # 三条展示音频.
-│   └── output/transcripts.json
-└── results/
-    ├── summary_test.json        # compile 子集报告.
-    └── summary.json             # evaluate 全量报告.
+open_models/
+├── deploy/                      # 四个总入口、日志和结果回传.
+├── whisper_tiny/
+│   ├── compile.sh
+│   ├── evaluate.sh
+│   ├── config.json
+│   ├── models/
+│   │   ├── tiny_encoder_w8a16.hbm
+│   │   ├── tiny_decoder_step_w8a16.hbm
+│   │   ├── runtime_contract.json
+│   │   ├── mel_filters_f32.bin
+│   │   ├── decode_config.txt
+│   │   └── whisper/assets/multilingual.tiktoken
+│   ├── board/                   # 推理、解码、评分及必要文本组件.
+│   ├── build/
+│   │   ├── reference/           # 子集/全量精度及少量数值参考.
+│   │   └── work/                # 当前推理记录,覆盖使用.
+│   ├── examples/
+│   │   ├── input/
+│   │   └── output/transcripts.json
+│   └── results/
+│       ├── summary_test.json
+│       └── summary.json
+└── 其他模型名称/
 ```
 
 源代码中的 `deploy/host/` 负责校准、编译、浮点参考及上传,`deploy/board/` 保存推理、音频前后处理和解码模块.主机从本模型的 `deploy/board/` 复用相同预处理与解码协议.资源与依赖来源见 [source_url.txt](models/source_url.txt).
+
+## 汇总恢复与结果回传
+
+推理记录和本次参考绑定保存在 `build/work/board_predictions.jsonl` 与 `build/work/run.json`.汇总失败后,可以直接在板端本模型目录执行对应命令:
+
+```bash
+# 重做子集汇总.
+python3 board/evaluate.py --summarize
+
+# 重做全量汇总.
+python3 board/evaluate.py --full --summarize
+```
+
+RDK 总入口与 MTK 相同,分为编译服务器的 `rdk_models/deploy/compile.sh`、`evaluate.sh`,以及板端的 `deploy/compile_board.sh`、`evaluate_board.sh`.两个板端总入口在全部模型完成后回传对应摘要和展示输出到编译服务器的 `rdk_models/场景/类别/模型/`.
+
+各端的 compile.log、evaluate.log 每次运行覆盖.回传账户、目标目录和专用密钥路径保存在本地平台配置与板端 `deploy/platform.local.sh`,由主机总 compile 末尾发布.
 
 ## 量化参数与编译命令
 
@@ -203,4 +228,4 @@ hb_compile --config "$WORK/w8a16/encoder/compile.yaml"
 hb_compile --config "$WORK/w8a16/decoder_step/compile.yaml"
 ```
 
-编译产物分别为 `tiny_encoder_w8a16.hbm` 和 `tiny_decoder_step_w8a16.hbm`,实际位宽和执行位置核对后发布到 NAS 模型资源目录.原始权重放 `original/`,配套资源与审计记录放 `build/`,具体布局见 [模型资源](models/README.md).
+编译产物分别为 `tiny_encoder_w8a16.hbm` 和 `tiny_decoder_step_w8a16.hbm`,实际位宽和执行位置核对后发布到 NAS 模型资源目录.原始权重与可重复使用的源资源放 `original/`,配套审计记录放 `build/`.滤波器、解码规则及文本源组件从 `original/runtime_resources/` 准备,具体布局见 [模型资源](models/README.md).

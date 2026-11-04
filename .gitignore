@@ -14,6 +14,7 @@ __pycache__/
 configs/storage.local.json
 configs/platforms/*.local.yaml
 mtk_models/deploy/platform.local.sh
+rdk_models/deploy/platform.local.sh
 .env
 # MiniCPM5 Demo 的本地编译路径与构建产物.
 demo/MiniCPM5_2B/config.json

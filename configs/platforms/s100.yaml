@@ -15,3 +15,7 @@ toolchain:
 storage:
     models_root: ""
     dataset_root: ""
+results:
+    host: ""
+    root: ""
+    key: /root/.ssh/rdk_results_ed25519
