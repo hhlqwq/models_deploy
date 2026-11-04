@@ -13,7 +13,7 @@ from hbm_runtime import HB_HBMRuntime
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "build/reference"
-sys.path[:0] = [str(ROOT), str(ASSETS / "vendor")]
+sys.path.insert(0, str(ASSETS / "vendor"))
 from decoder import INPUT_SHAPES, OUTPUT_SHAPES
 from shared import assets, fingerprint, log_mel, read_audio, token_bytes, transcribe, word_errors
 from whisper.normalizers.english import EnglishTextNormalizer

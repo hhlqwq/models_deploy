@@ -1,11 +1,13 @@
 # 示例音频
 
-输入来自已有 LibriSpeech test-clean 数据集.主机 compile 自动上传本次固定 50 条子集,其中前三条同时用于 Encoder 数值比较和展示转写:
+音频来自已有 LibriSpeech test-clean 数据集,与固定子集的前三条数值参考及真实板端转写对应.
 
-- 1089-134686-0008
-- 1089-134691-0023
-- 1188-133604-0000
+| 文件 | 官方音频标识 |
+| --- | --- |
+| sample_1.flac | 1089-134686-0008 |
+| sample_2.flac | 1089-134691-0023 |
+| sample_3.flac | 1188-133604-0000 |
 
-板端原始音频位于本地 S100 配置指定的公共数据集目录,精度参考记录对应相对路径.转写保存在 examples/output/transcripts.json,包含原始标注、FP32 识别文本及真实 BPU 识别文本.
+主机 compile 上传对应原始音频到板端 examples/input/.板端 compile 保存原始标注、FP32 转写与真实 BPU 转写到 examples/output/transcripts.json.模型 README 中直接展示识别结果及播放链接.
 
-公开来源为 https://www.openslr.org/12/ .
+来源为 https://www.openslr.org/12/ .

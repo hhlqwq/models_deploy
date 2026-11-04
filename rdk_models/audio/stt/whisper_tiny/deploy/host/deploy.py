@@ -13,7 +13,7 @@ from context import context
 from compile import session
 from tools.evaluation import fixed_subset, SPEECH_EXAMPLES
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "board"))
 from shared import assets, fingerprint, log_mel, read_audio, token_bytes, transcribe, word_errors
 
 
@@ -136,8 +136,10 @@ def bind_reference(ctx, reference, precision, artifacts):
     if stage == "subset":
         numeric = work / "encoder_reference.npz"
         files.append((numeric, "build/reference/encoder_reference.npz"))
+        for index, row in enumerate(selected[:ctx.config["evaluation"]["numerical_samples"]], 1):
+            files.append((ctx.dataset / row["audio"], f"examples/input/sample_{index}.flac"))
         files.extend((path, path.name) for path in artifacts.values())
-        for name in ("compile.sh", "evaluate.sh", "decoder.py", "shared.py", "board/evaluate.py"):
+        for name in ("compile.sh", "evaluate.sh", "board/decoder.py", "board/shared.py", "board/evaluate.py"):
             files.append((ctx.model / "deploy" / name, name))
         for name in ("mel_filters_f32.bin", "decode_config.txt", "whisper/assets/multilingual.tiktoken"):
             files.append((ctx.assets / name, "build/reference/" + name))

@@ -15,7 +15,7 @@ import yaml
 
 from context import context
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "board"))
 from shared import assets, decode_steps, fingerprint, log_mel, read_audio
 
 
