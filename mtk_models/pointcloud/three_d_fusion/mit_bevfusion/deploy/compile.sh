@@ -5,8 +5,8 @@ export MTK_EVAL_SCOPE=subset
 export MTK_OUTPUT_METRICS=1
 export MTK_EVALUATION_WORK=0
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PYTHONPATH="${HOME}/.local/share/mtk_models/bevfusion-evaluation${PYTHONPATH:+:${PYTHONPATH}}"
 if [[ -f "${SCRIPT_DIR}/config.json" ]]; then
+    export PYTHONPATH="${HOME}/.local/share/mtk_models/bevfusion-evaluation${PYTHONPATH:+:${PYTHONPATH}}"
     export PYTHONDONTWRITEBYTECODE=1
     export OPENBLAS_NUM_THREADS=4
     exec 9>"${SCRIPT_DIR}/.run.lock"

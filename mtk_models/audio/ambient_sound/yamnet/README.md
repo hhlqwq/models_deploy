@@ -113,3 +113,5 @@ env LD_LIBRARY_PATH="${NCC_ROOT}/lib" \
 代码保留的 `precision=fp16` 分支才设置 `convert_float32_weights_to_float16=True`,并在 NCC 追加 `--relax-fp32 --suppress-input`;这些参数不属于当前 W8A16 默认命令.切换精度后需要独立验证,不能混用历史报告.
 
 少量输出数值对比按音频文件名和窗口序号配对,两端独立完成原有音频预处理.允许 ffmpeg、FFT 和 Mel 计算的微小舍入差异,不要求输入数组逐字节一致;仍核对原始 WAV 内容、DLA、输入输出张量契约和选定窗口覆盖.CosSim/RMSE/NRMSE 表示包含预处理影响的部署输出差异,不等同于纯量化误差.
+
+主机导出所需 TensorFlow CPU、tf-keras 和 tf2onnx 已纳入 MTK 正式镜像,compile.sh 使用镜像默认 Python,不再依赖宿主机外部 Python 环境.

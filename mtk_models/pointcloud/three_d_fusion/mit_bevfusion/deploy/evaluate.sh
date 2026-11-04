@@ -5,8 +5,8 @@ export MTK_OUTPUT_METRICS=0
 export MTK_EVALUATION_WORK=1
 export MTK_EVAL_SCOPE=full
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PYTHONPATH="${HOME}/.local/share/mtk_models/bevfusion-evaluation${PYTHONPATH:+:${PYTHONPATH}}"
 if [[ -f "${SCRIPT_DIR}/config.json" ]]; then
+    export PYTHONPATH="${HOME}/.local/share/mtk_models/bevfusion-evaluation${PYTHONPATH:+:${PYTHONPATH}}"
     export PYTHONDONTWRITEBYTECODE=1
     export OPENBLAS_NUM_THREADS=4
     export EVAL_RUN_ID="${EVAL_RUN_ID:-$(date +%Y%m%d_%H%M%S)_$$}"

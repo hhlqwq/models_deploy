@@ -21,7 +21,7 @@ if [[ -f "${SCRIPT_DIR}/config.json" ]]; then
 else
     : "${MTK_MODELS_ROOT:?请先通过 docker/mtk_g720/enter_container.sh 进入容器}"
     echo "[容器 1/4] 导出浮点模型."
-    "${MTK_YAMNET_PYTHON:?缺少 YAMNet TensorFlow 环境}" "${SCRIPT_DIR}/host/export_model.py"
+    python "${SCRIPT_DIR}/host/export_model.py"
     echo "[容器 2/4] 校准与转换."
     python "${SCRIPT_DIR}/host/convert_int8.py"
     echo "[容器 3/4] 编译 DLA."

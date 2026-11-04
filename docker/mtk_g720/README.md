@@ -41,3 +41,11 @@ bash docker/mtk_g720/enter_container.sh
 
 项目、模型、数据集和SDK 资源按本地配置挂载.现有容器不会因修改构建文件而自动更新,更换镜像或容器前需保留必要资源并确认维护安排.
 构建过程和最终依赖清单保存在镜像内,SDK 镜像按其许可使用,不推送公共镜像仓库.最终 NPU 性能和精度以开发板实测为准.
+
+## 全平台统一验收
+
+遵守根目录 AGENTS.md 和 `.agents/skills/platform-docker/SKILL.md`.MTK 镜像包含全部现有模型的导出、转换及评分依赖,包括 nuScenes、MMPose、Whisper 和 YAMNet TensorFlow CPU.模型入口使用默认 python,不依赖用户 HOME 中临时安装的包.板端依赖独立管理,不使用主机镜像替代板端验证.
+
+build_image.sh 仅使用本目录 Dockerfile,先生成候选镜像,在不挂载模型数据的全新普通用户容器中验证全部模型依赖、轻量评分接口及 GPU,通过后才更新正式标签并移除候选标签.失败不会替换正式标签.镜像记录配方指纹和最终包清单,create_container.sh 拒绝过时配方,并检查实际容器的依赖与 GPU.进入入口不安装依赖.
+
+依赖变化同时更新 requirements.txt 和 verify_environment.py.实际包来自对应项目的 PyPI 发布页,PyTorch CUDA wheel 来源为 https://download.pytorch.org/whl/cu118,Python 源码下载地址见 Dockerfile.不使用 docker commit、临时 Dockerfile 或 --no-deps 绕过依赖解析.环境验收不加载模型权重、不执行模型编译或全量测试.

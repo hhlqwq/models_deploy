@@ -41,7 +41,7 @@ bash compile.sh
 
 ## 独立评价
 
-约定范围的完整评价由用户运行.本模型 `config.yaml` 保持已解压的 mini 数据根目录,`version: v1.0-mini` 和 `split: mini_val`;板端配置的数据目录应包含同一批 `samples/` 与 `sweeps/`.评价依赖为 [nuScenes devkit 1.2.0](https://pypi.org/project/nuscenes-devkit/1.2.0/),具体版本见 `deploy/requirements-evaluate.txt`.compile 的子集评分和 evaluate 的全量评分都需要该包.依赖隔离在 `$HOME/.local/share/mtk_models/bevfusion-evaluation`,由本模型两个 Shell 入口加载,不覆盖共享 NumPy、OpenCV 或 MTK SDK.
+约定范围的完整评价由用户运行.本模型 `config.yaml` 保持已解压的 mini 数据根目录,`version: v1.0-mini` 和 `split: mini_val`;板端配置的数据目录应包含同一批 `samples/` 与 `sweeps/`.评价依赖为 [nuScenes devkit 1.2.0](https://pypi.org/project/nuscenes-devkit/1.2.0/),具体版本见 `deploy/requirements-evaluate.txt`.compile 的子集评分和 evaluate 的全量评分都需要该包.主机评分依赖由 `docker/mtk_g720/` 正式镜像预装,使用默认 Python;板端依赖仍隔离在 `$HOME/.local/share/mtk_models/bevfusion-evaluation`,仅板端入口加载,不覆盖板端 NumPy、OpenCV 或 MTK SDK.
 
 在编译容器内执行:
 

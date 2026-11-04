@@ -23,7 +23,7 @@ if [[ -f "${SCRIPT_DIR}/config.json" ]]; then
 else
     : "${MTK_MODELS_ROOT:?请先进入已有编译容器,仅对已有浮点模型准备评价参考}"
     echo "[全量参考] 仅推理已有浮点模型,不导出、量化或编译,完成后自动上传参考."
-    "${MTK_YAMNET_PYTHON:?缺少已准备的 TensorFlow 环境}" "${SCRIPT_DIR}/host/evaluate_onnx.py" --backend tensorflow
+    python "${SCRIPT_DIR}/host/evaluate_onnx.py" --backend tensorflow
     python "${SCRIPT_DIR}/host/evaluate_onnx.py"
     python "${MTK_MODELS_ROOT}/tools/deploy.py" --upload-reference "${SCRIPT_DIR}"
 fi

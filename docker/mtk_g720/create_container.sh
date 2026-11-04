@@ -16,6 +16,10 @@ readonly TOOLCHAIN_ROOT="${MTK_TOOLCHAIN_ROOT}"
 readonly IMAGE_NAME="${MTK_G720_IMAGE:-mtk/ai_toolchain_ubuntu_22_g720_gpu:np8.0.11}"
 readonly CONTAINER_NAME="${MTK_CONTAINER_NAME}"
 
+readonly RECIPE_SHA256="$(cd "${PROJECT_ROOT}/docker/mtk_g720" && \
+    sha256sum Dockerfile requirements.txt yolov5-requirements.txt setup_container.sh verify_environment.py | \
+    sha256sum | cut -d ' ' -f1)"
+
 echo "[1/4] 检查目录和同名容器."
 test -d "${PROJECT_ROOT}"
 test -d "${DATASET_ROOT}"
@@ -33,6 +37,12 @@ done
 IMAGE_LLM_VERSION="$(docker image inspect --format '{{index .Config.Labels "mtk.llm_sdk"}}' "${IMAGE_NAME}" 2>/dev/null || true)"
 if [[ "${IMAGE_LLM_VERSION}" != "2.7.5" ]]; then
     echo "[错误] 镜像不存在或未声明 LLM SDK 2.7.5,请先执行 docker/mtk_g720/build_image.sh 并完成全新容器环境检查." >&2
+    exit 1
+fi
+
+IMAGE_RECIPE="$(docker image inspect --format '{{index .Config.Labels "mtk.recipe_sha256"}}' "${IMAGE_NAME}")"
+if [[ "${IMAGE_RECIPE}" != "${RECIPE_SHA256}" ]]; then
+    echo "[错误] 镜像与当前构建配方不一致,请先构建并验收新镜像." >&2
     exit 1
 fi
 
@@ -122,4 +132,9 @@ source "${PROJECT_ROOT}/docker/mtk_g720/user.sh"
 docker exec --user "${MTK_CONTAINER_UID}" \
     --env HOME="${MTK_CONTAINER_HOME}" "${CONTAINER_NAME}" git config --global --add safe.directory \
     "${PROJECT_ROOT}"
+# 创建阶段验证实际普通用户环境;进入终端不重复安装或执行验收.
+docker exec --user "${MTK_CONTAINER_UID}" --env HOME="${MTK_CONTAINER_HOME}" \
+    --env TF_NUM_INTEROP_THREADS=2 --env TF_NUM_INTRAOP_THREADS=2 \
+    "${CONTAINER_NAME}" python /opt/mtk-build/verify_environment.py
+
 echo "[OK] 容器 ${CONTAINER_NAME} 已就绪,编译用户 ${MTK_CONTAINER_UID}:${MTK_CONTAINER_GID}."
