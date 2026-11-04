@@ -99,8 +99,9 @@ def llm_accuracy(ctx):
     if not all(math.isfinite(row["perplexity"]) and row["perplexity"] > 0
                for row in (ppl, reference_ppl)):
         raise ValueError("WikiText2 PPL 无效.")
+    # MMLU 已完成约定千题,完整原始基准的覆盖单独标记.
     result = {"evaluation": mmlu["evaluation"],
-              "full_benchmark_evaluated": not minicpm, "accuracy": {
+              "full_benchmark_evaluated": False, "accuracy": {
         "mmlu": {"questions": mmlu["evaluated_questions"],
                  "scope": mmlu["scope"], "subjects": mmlu["subjects"],
                  "sampling_seed": mmlu["sampling_seed"],
@@ -112,14 +113,13 @@ def llm_accuracy(ctx):
                      "npu_ppl": ppl["perplexity"],
                      "difference": ppl["perplexity"] - reference_ppl["perplexity"],
                      "difference_percent": (ppl["perplexity"] / reference_ppl["perplexity"] - 1) * 100}}}
-    if minicpm:
-        result.update(
-            accuracy_scope="fixed_1000_mmlu_and_full_wikitext2",
-            reference=reference_mmlu["reference"],
-            quality_assessment={
-                "status": "measured_difference_not_automatically_accepted",
-                "error_attribution": "unverified_without_matched_sdk_float_and_w4a16_software_comparison",
-            })
+    result.update(
+        accuracy_scope="fixed_1000_mmlu_and_full_wikitext2",
+        reference=reference_mmlu["reference"],
+        quality_assessment={
+            "status": "measured_difference_not_automatically_accepted",
+            "error_attribution": "unverified_without_matched_sdk_float_and_w4a16_software_comparison",
+        })
     return result
 
 
