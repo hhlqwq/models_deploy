@@ -23,6 +23,7 @@ settings = load_config()["toolchain"].get("voice_control", {})
 defaults = {
     "OELLM_SDK_ROOT": settings.get("sdk_root"),
     "S100_BOARD_SYSROOT": settings.get("board_sysroot"),
+    "ONNXRUNTIME_ROOT": settings.get("onnxruntime_root"),
     "CXX": settings.get("cxx"),
     "VOICE_BUILD_DIR": str(Path("/tmp/hailongcodex") / datetime.now().strftime("%Y-%m-%d") / "voice_control/build"),
 }
@@ -46,7 +47,7 @@ if [[ "$("$CXX" -dumpmachine)" != aarch64* ]]; then
     exit 1
 fi
 mkdir -p "$VOICE_BUILD_DIR"
-libraries=(-lxlm -ldnn -lhbucp -lpthread -ldl)
+libraries=(-lxlm -ldnn -lhbucp -lonnxruntime -lpthread -ldl)
 if [[ "$mode" == MIC ]]; then
     libraries+=(-lasound)
 fi
@@ -55,6 +56,7 @@ echo "[构建] voice_control,$mode,SDK 1.0 C++"
 "$CXX" -std=c++17 -O2 -Wall -Wextra -Wpedantic \
     "-DVOICE_INPUT_$mode" -I"$root/src" \
     -isystem "$OELLM_SDK_ROOT/include" -isystem "$S100_BOARD_SYSROOT/include" \
+    -isystem "$ONNXRUNTIME_ROOT/include" -L"$ONNXRUNTIME_ROOT/lib" \
     "$root/src/main.cpp" -L"$OELLM_SDK_ROOT/lib" -L"$S100_BOARD_SYSROOT/lib" \
     -Wl,--allow-shlib-undefined -Wl,--disable-new-dtags \
     '-Wl,-rpath,$ORIGIN/lib:/usr/hobot/lib' \

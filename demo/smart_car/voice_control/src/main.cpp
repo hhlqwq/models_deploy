@@ -26,24 +26,14 @@ namespace {
 // 对每条完整语音只生成一个最终 JSON,模型异常不会变为有效动作.
 bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisper,
                   voice_control::DeepSeek& model, std::uint64_t sequence,
-                  std::chrono::steady_clock::time_point ended, float silence_threshold) {
+                  std::chrono::steady_clock::time_point ended) {
     std::string transcript;
     bool success = false;
     std::string error;
     try {
-        double power = 0;
-        for (float value : audio) {
-            power += value * value;
-        }
-        if (audio.empty() || std::sqrt(power / audio.size()) < silence_threshold) {
-            error = "no_speech_energy";
-        } else {
-            transcript = voice_control::Trim(whisper.Transcribe(audio));
-        }
+        transcript = voice_control::Trim(whisper.Transcribe(audio));
         std::cout << "[转录] " << transcript << std::endl;
-        if (!error.empty()) {
-            std::cout << "[过滤] " << error << std::endl;
-        } else if (transcript.empty() || transcript.size() > 2048) {
+        if (transcript.empty() || transcript.size() > 2048) {
             error = "empty_or_excessive_transcript";
         } else {
             // 每条控制指令独立分析,防止前一条动作污染当前结果.
@@ -57,7 +47,7 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
     auto result = voice_control::CommandResult(sequence, transcript, model.LastText(), success);
     if (!error.empty()) {
         result["error"] = error;
-        if (error == "no_speech_energy" || error == "empty_or_excessive_transcript") {
+        if (error == "empty_or_excessive_transcript") {
             result["status"] = "ignored";
         }
     }
@@ -97,10 +87,6 @@ int main(int argc, char** argv) {
         }
         const auto config = nlohmann::json::parse(stream);
         const auto audio_options = config.value("audio", nlohmann::json::object());
-        const float silence_threshold = audio_options.value("silence_rms_threshold", 0.001F);
-        if (silence_threshold < 0 || silence_threshold >= 1) {
-            throw std::runtime_error("silence_rms_threshold 必须在 [0,1) 范围.");
-        }
         const auto config_root = std::filesystem::absolute(argv[1]).parent_path();
         // 本地资源路径相对配置文件解析,从任意工作目录启动均一致.
         const auto resource_path = [&](const nlohmann::json& value) {
@@ -108,9 +94,12 @@ int main(int argc, char** argv) {
             return (path.is_absolute() ? path : config_root / path).lexically_normal().string();
         };
 #ifdef VOICE_INPUT_MIC
-        const auto& options = config.at("audio");
-        voice_control::Microphone microphone(options.at("device"));
+        voice_control::Microphone microphone(audio_options.at("device"));
 #endif
+        const auto& vad = config.at("vad");
+        voice_control::SpeechSegmenter segmenter(resource_path(vad.at("model")),
+            vad.value("threshold", 0.5F), audio_options.value("end_silence_ms", 700),
+            audio_options.value("min_speech_ms", 160), audio_options.value("max_utterance_ms", 30000));
         const auto& llm = config.at("llm");
         voice_control::DeepSeek model(resource_path(llm.at("model")), resource_path(llm.at("tokenizer")),
                                       resource_path(llm.at("chat_template")), llm.value("print_raw", false));
@@ -128,13 +117,10 @@ int main(int argc, char** argv) {
         std::deque<Utterance> queue;
         std::exception_ptr capture_error;
         bool finished = false;
-        const int capacity = options.value("queue_capacity", 2);
+        const int capacity = audio_options.value("queue_capacity", 2);
         if (capacity < 1 || capacity > 8) {
             throw std::runtime_error("queue_capacity 必须在 1 到 8 之间.");
         }
-        voice_control::SpeechSegmenter segmenter(options.value("vad_rms_threshold", 0.015F),
-            options.value("end_silence_ms", 700), options.value("min_speech_ms", 160),
-            options.value("max_utterance_ms", 15000));
         // 采集线程不调用模型,有界队列满时丢弃新语句并提示.
         std::thread capture([&]() {
             try {
@@ -181,7 +167,7 @@ int main(int argc, char** argv) {
                     queue.pop_front();
                 }
                 all_processed = ProcessAudio(utterance.audio, whisper, model, ++sequence,
-                    utterance.ended, silence_threshold) && all_processed;
+                    utterance.ended) && all_processed;
             }
         } catch (...) {
             voice_control::stop_requested = 1;
@@ -191,12 +177,36 @@ int main(int argc, char** argv) {
         voice_control::stop_requested = 1;
         capture.join();
 #else
-        std::cout << "[就绪] FILE 模式,本地音频 -> Whisper tiny -> DeepSeek -> 控制 JSON." << std::endl;
+        std::cout << "[就绪] FILE 模式,本地音频 -> Silero -> Whisper tiny -> DeepSeek -> 控制 JSON." << std::endl;
         for (int i = 2; i < argc && !voice_control::stop_requested; ++i) {
             std::cout << "[音频] " << i - 1 << "/" << argc - 2 << ": " << argv[i] << std::endl;
-            const auto audio = voice_control::ReadAudioFile(argv[i]);
-            all_processed = ProcessAudio(audio, whisper, model, ++sequence,
-                std::chrono::steady_clock::now(), silence_threshold) && all_processed;
+            segmenter.Reset();
+            const auto before = sequence;
+            std::vector<float> utterance;
+            // 离线模式逐段同步处理,解码等候推理,保持顺序且不丢有效输入.
+            const auto process = [&]() {
+                all_processed = ProcessAudio(utterance, whisper, model, ++sequence,
+                    std::chrono::steady_clock::now()) && all_processed;
+                utterance.clear();
+            };
+            voice_control::ReadAudioFile(argv[i], [&](const std::vector<float>& frame) {
+                if (segmenter.Feed(frame, utterance)) {
+                    process();
+                }
+            });
+            if (voice_control::stop_requested) {
+                break;
+            }
+            if (segmenter.Finish(utterance)) {
+                process();
+            }
+            if (segmenter.Dropped()) {
+                all_processed = false;
+                std::cerr << "[文件] 超长语音段: " << segmenter.Dropped() << std::endl;
+            }
+            if (sequence == before && segmenter.Dropped() == 0) {
+                std::cout << "[文件] 未检测到有效语音." << std::endl;
+            }
         }
 #endif
         rusage usage{};

@@ -8,7 +8,7 @@
 
 | 子 Demo | 独立运行 | 集成时职责 | 当前范围 |
 | --- | --- | --- | --- |
-| [voice_control](voice_control/README.md) | USB 麦克风或音频文件 → Silero VAD → 已部署 Whisper tiny → DeepSeek → 控制 JSON | 提供六类语音指令识别结果,供后续 ROS2 集成 | Whisper 资源已选定,Silero 与完整链路待完成;目标为控制台输出,不下发运动指令 |
+| [voice_control](voice_control/README.md) | USB 麦克风或音频文件 → Silero VAD → 已部署 Whisper tiny → DeepSeek → 控制 JSON | 提供六类语音指令识别结果,供后续 ROS2 集成 | Silero 与 FILE 小样本链路已验证,真实 MIC 待验收;目标为控制台输出,不下发运动指令 |
 | [visual_perception](visual_perception/README.md) | RGB → Metric 深度 → 局部栅格 → A-star 绕障路径 → ROS 2/RViz2 | 接收目标并提供地图、路径和有效状态 | 单障碍物绕行路径展示,不接底盘 |
 | `robot_demo` | 后续整体联调入口 | 协调语音任务、规划、轨迹跟踪与任务反馈 | 后续开发,不预建空应用 |
 

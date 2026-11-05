@@ -59,13 +59,16 @@ public:
     Microphone(const Microphone&) = delete;
     Microphone& operator=(const Microphone&) = delete;
 
-    // 读取 20ms 音频,设备断开及溢出明确报错,避免拼接丢失的语句.
+    // 读取 512 样本音频,设备断开及溢出明确报错,避免拼接丢失的语句.
     bool Read(std::vector<float>& output) {
-        std::array<std::int16_t, 320> samples{};
+        std::array<std::int16_t, 512> samples{};
         std::size_t offset = 0;
         while (offset < samples.size() && !stop_requested) {
             const auto count = snd_pcm_readi(pcm_, samples.data() + offset, samples.size() - offset);
-            if (count == -EAGAIN) {
+            if (count == -EINTR) {
+                continue;
+            }
+            if (count == -EAGAIN || count == 0) {
                 const int code = snd_pcm_wait(pcm_, 100);
                 if (code < 0 && code != -EINTR) {
                     throw std::runtime_error(std::string("ALSA 等待失败: ") + snd_strerror(code));
@@ -91,8 +94,9 @@ private:
 };
 #endif
 
-// 使用已有 FFmpeg 解码本地常见音频容器,不调用外部模型推理程序.
-inline std::vector<float> ReadAudioFile(const std::string& filename) {
+// 使用已有 FFmpeg 分块解码,处理速度由消费端控制.
+template <typename Consume>
+void ReadAudioFile(const std::string& filename, Consume consume) {
     if (!std::filesystem::is_regular_file(filename)) {
         throw std::runtime_error("输入必须是存在的本地音频文件.");
     }
@@ -120,60 +124,73 @@ inline std::vector<float> ReadAudioFile(const std::string& filename) {
         close(descriptors[0]);
         throw std::runtime_error("无法启动已有 FFmpeg: " + std::to_string(code));
     }
-    std::vector<char> bytes;
-    std::array<char, 16384> buffer{};
-    bool too_long = false;
-    bool read_failed = false;
-    while (!stop_requested) {
-        pollfd descriptor{descriptors[0], POLLIN, 0};
-        const int ready = poll(&descriptor, 1, 100);
-        if (ready < 0 && errno != EINTR) {
-            read_failed = true;
-            break;
+    // 关闭读端后回收本应用启动的解码进程,异常路径也执行.
+    const auto close_decoder = [&]() {
+        if (pid < 0) {
+            return 0;
         }
-        if (ready <= 0) {
-            continue;
+        close(descriptors[0]);
+        int status = 0;
+        pid_t waited;
+        do {
+            waited = waitpid(pid, &status, 0);
+        } while (waited < 0 && errno == EINTR);
+        pid = -1;
+        return waited < 0 || !WIFEXITED(status) ? -1 : WEXITSTATUS(status);
+    };
+    std::array<std::int16_t, 512> samples{};
+    std::size_t filled = 0;
+    bool has_samples = false;
+    // 仅保留一帧 PCM,最后一帧使用实际样本数.
+    const auto emit = [&]() {
+        std::vector<float> frame(filled / sizeof(samples[0]));
+        for (std::size_t i = 0; i < frame.size(); ++i) {
+            frame[i] = samples[i] / 32768.0F;
         }
-        const auto size = read(descriptors[0], buffer.data(), buffer.size());
-        if (size == 0) {
-            break;
-        }
-        if (size < 0) {
-            if (errno == EINTR) {
+        has_samples = true;
+        consume(frame);
+        filled = 0;
+    };
+    try {
+        while (!stop_requested) {
+            pollfd descriptor{descriptors[0], POLLIN, 0};
+            const int ready = poll(&descriptor, 1, 100);
+            if (ready < 0 && errno != EINTR) {
+                throw std::runtime_error("等待音频解码失败.");
+            }
+            if (ready <= 0) {
                 continue;
             }
-            read_failed = true;
-            break;
+            const auto size = read(descriptors[0], reinterpret_cast<char*>(samples.data()) + filled,
+                                   sizeof(samples) - filled);
+            if (size == 0) {
+                break;
+            }
+            if (size < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                throw std::runtime_error("读取解码音频失败.");
+            }
+            filled += static_cast<std::size_t>(size);
+            if (filled == sizeof(samples)) {
+                emit();
+            }
         }
-        if (bytes.size() + size > 480000 * sizeof(std::int16_t)) {
-            too_long = true;
-            break;
+        const int code = close_decoder();
+        if (stop_requested) {
+            return;
         }
-        bytes.insert(bytes.end(), buffer.begin(), buffer.begin() + size);
-    }
-    close(descriptors[0]);
-    int status = 0;
-    while (waitpid(pid, &status, 0) < 0) {
-        if (errno != EINTR) {
-            read_failed = true;
-            break;
+        if (code != 0 || filled % sizeof(samples[0]) != 0 || (!has_samples && !filled)) {
+            throw std::runtime_error("音频解码失败或输入为空.");
         }
+        if (filled) {
+            emit();
+        }
+    } catch (...) {
+        close_decoder();
+        throw;
     }
-    if (too_long) {
-        throw std::runtime_error("Whisper tiny 单片段上限为 30 秒,请提供较短片段;未截断识别.");
-    }
-    if (read_failed || !WIFEXITED(status) || WEXITSTATUS(status) != 0 || stop_requested ||
-        bytes.empty() || bytes.size() % sizeof(std::int16_t) != 0) {
-        throw std::runtime_error("音频解码失败、已中断或输入为空.");
-    }
-    std::vector<float> pcm(bytes.size() / sizeof(std::int16_t));
-    // 与现有 Whisper 和 ALSA 一致,先固定 PCM16 再归一化.
-    for (std::size_t i = 0; i < pcm.size(); ++i) {
-        std::int16_t sample;
-        std::memcpy(&sample, bytes.data() + i * sizeof(sample), sizeof(sample));
-        pcm[i] = sample / 32768.0F;
-    }
-    return pcm;
 }
 
 }  // 命名空间 voice_control

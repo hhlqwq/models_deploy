@@ -9,13 +9,15 @@
         "models": "models/whisper_tiny",
         "language": "zh"
     },
+    "vad": {
+        "model": "models/silero_vad/silero_vad.onnx",
+        "threshold": 0.5
+    },
     "audio": {
         "device": "plughw:CARD=USB,DEV=0",
-        "vad_rms_threshold": 0.015,
-        "silence_rms_threshold": 0.001,
         "end_silence_ms": 700,
         "min_speech_ms": 160,
-        "max_utterance_ms": 15000,
+        "max_utterance_ms": 30000,
         "queue_capacity": 2
     }
 }
