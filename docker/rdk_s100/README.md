@@ -23,4 +23,8 @@ NAS 工具目录按同一路径只读挂载,依赖从归档安装到容器或匹
 工具链来源: https://developer.d-robotics.cc/rdk_doc_center/
 具体镜像版本必须与板端 Runtime 核对,镜像存在不代表已经验证兼容.
 
+## C++ 语音 Demo
+
+语音 Demo 复用现有唯一 Docker 和板端旧 SDK 1.0,通过已有官方 aarch64 工具包交叉编译.不新增 Python 隔离环境、不构建 LLM 2.0 候选镜像,不安装原始权重量化依赖.工具包、配套板端头文件/库和编译器位置放在本地 toolchain.voice_control 配置,build.sh 直接使用这些资源.当前范围与实测状态见 [语音 Demo](../../demo/smart_car/voice_control/README.md).
+
 板端资源路径在本地配置中分别填写 `board.models_root` 和 `board.datasets_root`,用于模型部署包与跨模型复用的公共数据集.原 `board.work_dir` 不再使用.

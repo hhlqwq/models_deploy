@@ -1,0 +1,21 @@
+{
+    "llm": {
+        "model": "models/deepseek/DeepSeek_R1_Distill_Qwen_1.5B_4096.hbm",
+        "tokenizer": "models/deepseek/tokenizer",
+        "chat_template": "models/deepseek/tokenizer/DeepSeek_R1_Distill_Qwen_1.5B.jinja",
+        "print_raw": false
+    },
+    "whisper": {
+        "models": "models/whisper_tiny",
+        "language": "zh"
+    },
+    "audio": {
+        "device": "plughw:CARD=USB,DEV=0",
+        "vad_rms_threshold": 0.015,
+        "silence_rms_threshold": 0.001,
+        "end_silence_ms": 700,
+        "min_speech_ms": 160,
+        "max_utterance_ms": 15000,
+        "queue_capacity": 2
+    }
+}
