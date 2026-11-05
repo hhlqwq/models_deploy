@@ -1,5 +1,24 @@
 # MiniCPM5-2B C++ 连续对话
 
+## 运行流程
+
+```mermaid
+flowchart TD
+    A[解析模型目录与聊天模板参数] --> B[加载 G720 推理引擎]
+    B --> C[读取一行输入]
+    C -->|普通文本| D[合并历史并构造输入 Token]
+    D --> E{上下文预算足够}
+    E -->|是| F[生成并流式输出回复]
+    F --> G[更新对话历史]
+    G --> C
+    E -->|否| C
+    C -->|重置| H[清空历史]
+    H --> C
+    C -->|退出或 EOF| I[释放资源]
+```
+
+模型包使用现有 [G720 MiniCPM5-2B 适配](../../mtk_models/gen_ai/llm/minicpm5_2b/README.md)。当前构建和板端状态见 [运行记录](results/summary.json)。
+
 ## 编译
 
 CMake 自动读取本地 `config.json` 中的编译路径,首次使用按 [config.example.json](config.example.json) 填写一次.

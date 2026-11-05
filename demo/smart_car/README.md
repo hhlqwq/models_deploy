@@ -2,9 +2,9 @@
 
 总体集成仍处于设计阶段,下述统一 Makefile、CMake 和 robot_demo 接口尚未实现.语音模块已恢复推进: 两种音频输入共用 Silero VAD、自行部署的 Whisper tiny 和板端原有 DeepSeek,输出控制 JSON;Whisper 来源已由用户明确确认.目标、计划和实际状态以 [voice_control](voice_control/README.md) 为准.本文其余总体构建命令仍为拟定接口,不代表已连接底盘.
 
-## 组成与交付顺序
+## 组成与开发顺序
 
-`demo/` 是小车应用工程,其中的子 Demo 既能独立启动展示,也能通过 ROS 2 组成最终应用.模型来源、转换和正式评价继续归属仓库 `models/` 体系,不在每个 Demo 重建模型工具链.
+小车各子 Demo 按独立运行设计,后续可通过 ROS 2 集成.模型来源、转换和按需评价由对应的 [MTK](../../mtk_models/README.md) 或 [RDK](../../rdk_models/README.md) 模型目录维护.Demo 按所选目标引用模型包.
 
 | 子 Demo | 独立运行 | 集成时职责 | 当前范围 |
 | --- | --- | --- | --- |

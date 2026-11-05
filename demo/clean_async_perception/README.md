@@ -14,6 +14,24 @@ src/main.cpp
 
 Pipeline 固定按 `数据采集 → 感知处理 → 结果整合 → 结果编码上报` 运行。平台层只负责配置读取和生命周期管理。
 
+## 单帧运行流程
+
+```mermaid
+flowchart LR
+    A[Orbbec 实时彩色帧] --> C[当前 BGR 帧]
+    B[ROS 2 图像与内参] --> Q[有界队列取最新帧]
+    Q --> C
+    C --> D[提交 YOLOX 检测]
+    C --> E[提交 MobileNetV2 分类]
+    D --> F[主循环等待本帧回调]
+    E --> F
+    F --> G[合并结果与可用的 IPM 信息]
+    G --> H[ROS 2 感知 JSON]
+    G --> I[可选 Web 预览]
+```
+
+主循环为同一帧提交两个模型任务，再等待回调和整合结果。ROS 2 输入优先处理最新帧。BAG 回放是单独的输入分支，当前转换路径有已记录的问题，见 [输入模式和线程说明](docs/async_perception_app_design_doc_yolox_ros.md#42-live-与-playback-模式)。
+
 `src/platform/linux/config/async_perception.ini` 的 `application.mode` 可选 `ros`、`live`、`playback`。默认 `ros` 使用 `/camera/color/image_raw` (`sensor_msgs/msg/Image`, `rgb8`) 和 `/camera/color/camera_info` (`sensor_msgs/msg/CameraInfo`)；`live` 与 `playback` 保留原 Orbbec 路径。详情见 [Part 2 接入说明](docs/async_perception_app_design_doc_yolox_ros.md)。
 
 ## 地面分类

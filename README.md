@@ -7,7 +7,7 @@
 | 想做的事 | 入口 |
 | --- | --- |
 | 找现有模型、运行目标和结果 | [MTK 模型](mtk_models/README.md) · [RDK 模型](rdk_models/README.md) |
-| 找应用 Demo | [Demo 总览](demo/) |
+| 找应用 Demo | [Demo 总览](demo/README.md) |
 | 配置开发机、编译容器和目标设备 | [开发与测试环境](docs/environment.md) |
 | 查看仓库结构和多平台设计 | [项目架构](docs/architecture.md) |
 | 找开发规范、示例和学习资料 | [文档导航](docs/README.md) |
