@@ -15,10 +15,15 @@ namespace voice_control {
 
 class DeepSeek {
 public:
+    struct Timing {
+        double first_text_ms = -1;
+        double total_ms = -1;
+    };
+
     // 使用旧 SDK 的原始模型、tokenizer 和模板,不修改系统库.
     DeepSeek(const std::string& model, const std::string& tokenizer,
-             const std::string& template_path, bool print_raw)
-        : model_(model), tokenizer_(tokenizer), print_raw_(print_raw) {
+             const std::string& template_path, bool print_raw, bool thinking)
+        : model_(model), tokenizer_(tokenizer), print_raw_(print_raw), thinking_(thinking) {
         std::ifstream stream(template_path);
         if (!stream) {
             throw std::runtime_error("无法读取官方聊天模板: " + template_path);
@@ -27,6 +32,17 @@ public:
         if (template_.empty()) {
             throw std::runtime_error("聊天模板为空.");
         }
+        if (!thinking_) {
+            // 旧 SDK 无独立开关,在内存模板中预填空思考段后直接生成答案.
+            const std::string prefix = R"({{'<｜Assistant｜><think>\n'}})";
+            const std::string direct = R"({{'<｜Assistant｜><think>\n\n</think>\n\n'}})";
+            const auto position = template_.find(prefix);
+            if (position == std::string::npos ||
+                template_.find(prefix, position + prefix.size()) != std::string::npos) {
+                throw std::runtime_error("聊天模板与已验证的 DeepSeek 直答前缀不匹配.");
+            }
+            template_.replace(position, prefix.size(), direct);
+        }
         auto params = xlm_create_default_param();
         params.model_path = model_.c_str();
         params.token_config_path = tokenizer_.c_str();
@@ -34,7 +50,7 @@ public:
         params.k_cache_int8 = false;
         // 上下文采用旧库默认值;固定分类使用官方支持的贪心采样.
         params.sampling.temp = 0.0F;
-        std::cout << "[加载] DeepSeek,旧 SDK 1.0." << std::endl;
+        std::cout << "[加载] DeepSeek,旧 SDK 1.0,thinking=" << (thinking_ ? "on" : "off") << std::endl;
         const int code = xlm_init(&params, Callback, &handle_);
         if (code != 0) {
             if (handle_) {
@@ -64,7 +80,7 @@ public:
     const std::string& LastText() const { return last_text_; }
 
     // 使用 SDK 内部多轮缓存,错误后要求新会话,不提交不完整回答.
-    bool Ask(const std::string& text) {
+    bool Ask(const std::string& text, Timing& timing) {
         last_text_.clear();
         xlm_lm_request_t request{};
         // 旧 SDK 示例使用固定槽 0,业务序号独立放在 ROS2 JSON 中.
@@ -92,20 +108,23 @@ public:
             }
         }
         std::cout << std::endl;
+        timing.first_text_ms = reply.first_text_ms;
+        timing.total_ms = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - reply.started).count();
         if (code != 0 || reply.failed || !reply.ended) {
             new_chat_ = true;
             std::cerr << "[错误] 推理未正常结束,code=" << code
                       << ";下轮重置会话." << std::endl;
             return false;
         }
+        if (!thinking_ && (reply.text.find("<think>") != std::string::npos ||
+                          reply.text.find("</think>") != std::string::npos)) {
+            new_chat_ = true;
+            std::cerr << "[错误] 直答模式下模型生成了思考标记." << std::endl;
+            return false;
+        }
         new_chat_ = false;
         last_text_ = reply.text;
-        const auto elapsed = std::chrono::duration<double, std::milli>(
-            std::chrono::steady_clock::now() - reply.started).count();
-        std::cout << "[指标] e2e_ms=" << elapsed
-                  << ",first_text_ms=" << reply.first_text_ms
-                  << ",sdk_token_metrics=unavailable"
-                  << ",stop=sdk_end" << std::endl;
         return true;
     }
 
@@ -189,6 +208,7 @@ private:
     bool new_chat_ = true;
     std::string last_text_;
     bool print_raw_ = false;
+    bool thinking_ = false;
 };
 
 }  // 命名空间 voice_control

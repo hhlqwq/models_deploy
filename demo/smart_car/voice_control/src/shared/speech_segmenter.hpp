@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <deque>
@@ -17,6 +18,10 @@ namespace voice_control {
 class SpeechSegmenter {
 public:
     static constexpr std::size_t kFrameSamples = 512;
+    struct Timing {
+        double compute_ms = 0;
+        double tail_audio_ms = 0;
+    };
 
     // Silero v5.1.2 使用 16kHz、512 样本帧、64 样本上下文和循环状态.
     SpeechSegmenter(const std::string& model, float threshold,
@@ -51,6 +56,7 @@ public:
         silence_ = 0;
         dropping_ = false;
         dropped_ = 0;
+        timing_ = {};
     }
 
     // 最后一帧可不足 512 样本;补零只供 VAD 使用,不送入转录音频.
@@ -58,7 +64,10 @@ public:
         if (frame.empty() || frame.size() > kFrameSamples) {
             throw std::runtime_error("Silero 音频帧长度无效.");
         }
+        const auto started = std::chrono::steady_clock::now();
         const auto probability = Probability(frame);
+        timing_.compute_ms += std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - started).count();
         const bool active = !audio_.empty() || dropping_;
         const bool speech = probability >= (active ? threshold_ - 0.15F : threshold_);
         if (dropping_) {
@@ -103,6 +112,7 @@ public:
         if (valid) {
             audio_.resize(audio_.size() - (silence_ - std::min(silence_, std::size_t{1600})));
             if (audio_.size() <= maximum_) {
+                timing_.tail_audio_ms = silence_ / 16.0;
                 utterance.swap(audio_);
             } else {
                 std::cerr << "[丢弃] 单段语音超过 ASR 上限." << std::endl;
@@ -119,6 +129,13 @@ public:
 
     // 供文件模式报告超长语句,避免把缺失结果当作完整处理.
     std::size_t Dropped() const { return dropped_; }
+
+    // 取出自上次结果以来的 VAD 计时,包含期间的静音帧推理.
+    Timing TakeTiming() {
+        const auto timing = timing_;
+        timing_ = {};
+        return timing;
+    }
 
 private:
     // 只启用默认 CPU 提供者,限制推理线程以减少与语音链路争抢.
@@ -168,6 +185,7 @@ private:
     }
 
     float threshold_;
+    Timing timing_;
     Ort::Env env_;
     Ort::Session session_;
     std::array<std::string, 2> output_names_;

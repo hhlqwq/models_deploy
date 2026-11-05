@@ -3,7 +3,8 @@
         "model": "models/deepseek/DeepSeek_R1_Distill_Qwen_1.5B_4096.hbm",
         "tokenizer": "models/deepseek/tokenizer",
         "chat_template": "models/deepseek/tokenizer/DeepSeek_R1_Distill_Qwen_1.5B.jinja",
-        "print_raw": false
+        "print_raw": false,
+        "thinking": false
     },
     "whisper": {
         "models": "models/whisper_tiny",

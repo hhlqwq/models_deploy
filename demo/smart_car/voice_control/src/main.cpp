@@ -26,19 +26,23 @@ namespace {
 // 对每条完整语音只生成一个最终 JSON,模型异常不会变为有效动作.
 bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisper,
                   voice_control::DeepSeek& model, std::uint64_t sequence,
-                  std::chrono::steady_clock::time_point ended) {
+                  std::chrono::steady_clock::time_point ended,
+                  const voice_control::SpeechSegmenter::Timing& vad_timing) {
+    const auto started = std::chrono::steady_clock::now();
+    voice_control::Whisper::Timing asr_timing;
+    voice_control::DeepSeek::Timing llm_timing;
     std::string transcript;
     bool success = false;
     std::string error;
     try {
-        transcript = voice_control::Trim(whisper.Transcribe(audio));
+        transcript = voice_control::Trim(whisper.Transcribe(audio, asr_timing));
         std::cout << "[转录] " << transcript << std::endl;
         if (transcript.empty() || transcript.size() > 2048) {
             error = "empty_or_excessive_transcript";
         } else {
             // 每条控制指令独立分析,防止前一条动作污染当前结果.
             model.Reset();
-            success = model.Ask(voice_control::CommandPrompt(transcript));
+            success = model.Ask(voice_control::CommandPrompt(transcript), llm_timing);
         }
     } catch (const std::exception& exception) {
         error = exception.what();
@@ -56,6 +60,20 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
 #else
     result["source"]["sensor_id"] = "audio_file";
 #endif
+    // 缺失阶段输出 null,避免把未执行或未完成的计时写为零.
+    const auto measured = [](double value) -> nlohmann::json {
+        return value < 0 ? nlohmann::json(nullptr) : nlohmann::json(value);
+    };
+    result["timing_ms"] = {
+        {"vad_compute", vad_timing.compute_ms},
+        {"vad_tail_audio", vad_timing.tail_audio_ms},
+        {"queue", std::chrono::duration<double, std::milli>(started - ended).count()},
+        {"whisper_mel", measured(asr_timing.mel_ms)},
+        {"whisper_encoder", measured(asr_timing.encoder_ms)},
+        {"whisper_decoder", measured(asr_timing.decoder_ms)},
+        {"deepseek_first_text", measured(llm_timing.first_text_ms)},
+        {"deepseek_total", measured(llm_timing.total_ms)},
+    };
     result["since_audio_end_ms"] = std::chrono::duration<double, std::milli>(
         std::chrono::steady_clock::now() - ended).count();
     const auto json = result.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
@@ -102,7 +120,8 @@ int main(int argc, char** argv) {
             audio_options.value("min_speech_ms", 160), audio_options.value("max_utterance_ms", 30000));
         const auto& llm = config.at("llm");
         voice_control::DeepSeek model(resource_path(llm.at("model")), resource_path(llm.at("tokenizer")),
-                                      resource_path(llm.at("chat_template")), llm.value("print_raw", false));
+                                      resource_path(llm.at("chat_template")), llm.value("print_raw", false),
+                                      llm.value("thinking", false));
         const auto& asr = config.at("whisper");
         voice_control::Whisper whisper(resource_path(asr.at("models")), asr.value("language", "zh"));
         std::uint64_t sequence = 0;
@@ -111,6 +130,7 @@ int main(int argc, char** argv) {
         struct Utterance {
             std::vector<float> audio;
             std::chrono::steady_clock::time_point ended;
+            voice_control::SpeechSegmenter::Timing vad_timing;
         };
         std::mutex mutex;
         std::condition_variable ready;
@@ -129,11 +149,13 @@ int main(int argc, char** argv) {
                 while (!voice_control::stop_requested && microphone.Read(frame)) {
                     std::vector<float> utterance;
                     if (segmenter.Feed(frame, utterance)) {
+                        const auto ended = std::chrono::steady_clock::now();
+                        const auto timing = segmenter.TakeTiming();
                         std::lock_guard<std::mutex> lock(mutex);
                         if (queue.size() >= static_cast<std::size_t>(capacity)) {
                             std::cerr << "[丢弃] 模型繁忙,语句队列已满." << std::endl;
                         } else {
-                            queue.push_back({std::move(utterance), std::chrono::steady_clock::now()});
+                            queue.push_back({std::move(utterance), ended, timing});
                             ready.notify_one();
                         }
                     }
@@ -167,7 +189,7 @@ int main(int argc, char** argv) {
                     queue.pop_front();
                 }
                 all_processed = ProcessAudio(utterance.audio, whisper, model, ++sequence,
-                    utterance.ended) && all_processed;
+                    utterance.ended, utterance.vad_timing) && all_processed;
             }
         } catch (...) {
             voice_control::stop_requested = 1;
@@ -185,8 +207,9 @@ int main(int argc, char** argv) {
             std::vector<float> utterance;
             // 离线模式逐段同步处理,解码等候推理,保持顺序且不丢有效输入.
             const auto process = [&]() {
+                const auto ended = std::chrono::steady_clock::now();
                 all_processed = ProcessAudio(utterance, whisper, model, ++sequence,
-                    std::chrono::steady_clock::now()) && all_processed;
+                    ended, segmenter.TakeTiming()) && all_processed;
                 utterance.clear();
             };
             voice_control::ReadAudioFile(argv[i], [&](const std::vector<float>& frame) {

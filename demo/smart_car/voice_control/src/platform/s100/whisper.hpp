@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <complex>
 #include <cstdint>
@@ -20,6 +21,12 @@ namespace voice_control {
 
 class Whisper {
 public:
+    struct Timing {
+        double mel_ms = -1;
+        double encoder_ms = -1;
+        double decoder_ms = -1;
+    };
+
     // 直接读取已有 tiny 资源,默认中文,保持英文原始规则文件不变.
     Whisper(const std::filesystem::path& root, const std::string& language)
         : encoder_((root / "tiny_encoder_w8a16.hbm").string(),
@@ -68,12 +75,20 @@ public:
     }
 
     // 每句从空缓存开始,满 256 槽后按最后一维左移.
-    std::string Transcribe(const std::vector<float>& pcm) {
+    std::string Transcribe(const std::vector<float>& pcm, Timing& timing) {
         if (pcm.empty() || pcm.size() > 480000) {
             throw std::runtime_error("音频必须为 0 到 30 秒的 16k 单声道 PCM.");
         }
         std::cout << "[识别] 计算 Mel,运行 Whisper tiny." << std::endl;
-        const auto features = encoder_.Run({{"mel", Mel(pcm)}}).at("audio_features");
+        auto started = std::chrono::steady_clock::now();
+        auto mel = Mel(pcm);
+        auto now = std::chrono::steady_clock::now();
+        timing.mel_ms = std::chrono::duration<double, std::milli>(now - started).count();
+        started = now;
+        const auto features = encoder_.Run({{"mel", std::move(mel)}}).at("audio_features");
+        now = std::chrono::steady_clock::now();
+        timing.encoder_ms = std::chrono::duration<double, std::milli>(now - started).count();
+        started = now;
         Hbm::Values feeds;
         for (const auto& item : DecoderShapes(false)) {
             std::size_t size = 1;
@@ -147,6 +162,8 @@ public:
                 break;
             }
         }
+        timing.decoder_ms = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - started).count();
         if (!ended) {
             throw std::runtime_error("Whisper 达到位置或生成上限,拒绝提交截断转录.");
         }

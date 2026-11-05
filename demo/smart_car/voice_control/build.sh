@@ -25,7 +25,7 @@ defaults = {
     "S100_BOARD_SYSROOT": settings.get("board_sysroot"),
     "ONNXRUNTIME_ROOT": settings.get("onnxruntime_root"),
     "CXX": settings.get("cxx"),
-    "VOICE_BUILD_DIR": str(Path("/tmp/hailongcodex") / datetime.now().strftime("%Y-%m-%d") / "voice_control/build"),
+    "VOICE_BUILD_DIR": str(Path("/tmp/hailong") / datetime.now().strftime("%Y-%m-%d") / "voice_control/build"),
 }
 for name, value in defaults.items():
     if name == "CXX":
