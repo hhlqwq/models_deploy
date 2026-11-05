@@ -1,239 +1,131 @@
-# S100 语音控制 Demo：目标、方案与实施计划
+# S100 语音控制 Demo
 
-本文是本 Demo 的方案、计划和实际进度入口。更新时间：2026-11-05。
+C++ 应用在 S100 上运行。FILE 处理完输入文件后退出，MIC 持续监听到 Ctrl+C。两者共用 Silero VAD → Whisper tiny → DeepSeek → 控制 JSON，结果输出到控制台，可作为 ROS2 String 的载荷。
 
-**当前状态：Silero VAD、FILE 分段处理和 MIC 采集链路已实现。DeepSeek 默认直答与分阶段计时已通过 FILE 小范围回归，双模式程序已更新到板端统一目录。完整验收由用户执行，真实 MIC 待设备接入。跨段会话历史、构建组织与最终 JSON 契约仍待对齐。**
+**进度**：核心链路已开发。上一版在板端验证了 FILE 静音、长文件多指令和文件末尾分句，MIC 已交叉编译。当前版本整理了应用入口、使用步骤和输出协议。真实 USB 麦克风、完整指令与噪声覆盖由用户验收，跨段会话历史仍待明确是否纳入六类控制场景。
 
-## 1. 目标与范围
+## 1. 在已部署的板端运行
 
-在地瓜 S100 上实现 C++ 语音指令识别 Demo，参考 [clean_async_perception](../../clean_async_perception/README.md) 的工程组织、配置、构建与生命周期管理方式。
+进入统一运行目录，按需执行一条命令。
 
-用户已明确的要求：
+```bash
+cd /root/hailong.he/demo/voice_control
 
-1. LLM 复用板端原有 DeepSeek-R1-Distill-Qwen-1.5B 与旧 SDK；ASR 复用我们已经部署在板端的 Whisper tiny。两者来源分别记录，不混称为板端原有官方资源。
-2. **用户最新明确允许使用本仓库自行适配、部署的 Whisper tiny**。直接复用现有双 HBM、Mel 滤波器、词表和解码规则，不再等待另一套官方现成 Whisper，不为此下载 Whisper small 或切换 LLM SDK。
-3. 使用 Silero VAD 做语音检测与分句，不能自行替换为能量阈值分句。
-4. 通过编译参数选择两种测试模式：FILE 从头到尾处理一个有限音频文件，按其中检出的有效语音段识别、分类和输出，文件处理完后退出；MIC 持续检测语音输入，反复识别、分类和输出，直到主动退出或发生无法继续的错误。单次文件测试不等于单个结果。
-5. **两种模式都经过 Whisper 和 DeepSeek**。Whisper 的实际转录作为输入，由 DeepSeek 分析动作。
-6. LLM 最终结果限定为：前进、后退、左转、右转、停止、未识别。结果转换成适合 ROS2 消息承载的 JSON，当前输出到控制台即可。
-7. 板端程序、模型资源、配置、测试输入和运行结果统一放在用户指定目录；只使用一个 Docker 环境。
-8. 每完成一个小阶段，更新本文、提交并推送代码，核对远端同步结果。
+# FILE：读取音频文件，按检出的语音段输出零到多条结果。
+./voice_control_file config.json /path/to/audio.wav
 
-本轮不进行原始 Qwen3 权重适配，不重新量化、编译 DeepSeek 或 Whisper；不新增底盘执行、TTS、手机、蓝牙或 ROS2 实际发布功能。
-
-## 2. 已确认的资源与来源
-
-本轮扩大检索板端目录并检查 NAS 音频资源后，未找到另一套可直接复用的官方 Whisper；找到的 Whisper HBM 属于本仓库部署产物。用户在了解这一事实后已明确选择使用它。复制或硬链接到统一目录不改变来源，本方案分别标注原有 LLM 与自行部署的 ASR。
-
-| 资源 | 已掌握的事实 | 当前结论 |
-| --- | --- | --- |
-| DeepSeek-R1-Distill-Qwen-1.5B | 在板端原有旧 LLM SDK 目录查到 HBM、tokenizer、模板，原有官方例程曾成功生成 | 可作为优先复用的 LLM 候选，接入时继续核对配套资源 |
-| 旧 LLM SDK | 已读取板端既有 xlm 接口和官方例程 | 复用对应接口，不套用 LLM 2.0 的 API |
-| 另一套原有官方 Whisper | 本轮排除自行部署目录后未找到可用模型；不能将其他官方 ASR 示例直接认定为 Whisper | 不再作为本任务前置条件，不继续等待或自行引入另一型号 |
-| 本仓库自行部署的 Whisper tiny | 现有 Encoder/Decoder HBM、Mel 滤波器、词表和解码配置齐全，已有 C++ 接入及文件测试基础 | **用户最新确认采用**；复用现有资源与接口，最终仍按完整目标链路重新验收 |
-| Silero VAD 与 C++ 推理依赖 | Silero VAD v5.1.2 ONNX 和 ONNX Runtime 1.20.1 aarch64 CPU 库已取得，C++ 头文件来自同标签 | 已通过板端加载及 FILE 小样本验证 |
-| USB 麦克风 | 最近一次查询未检测到声卡 | 真实采集待设备可用后重新核实，历史查询不代表当前状态 |
-
-Whisper 来源限制已按用户最新决定解除，固定采用现有自行部署的 tiny，不新增模型适配或量化流程。公开配置使用资源相对路径，板端实际根目录放本地配置；现有 ASR 输入输出契约和缓存规则继续复用，不套用另一个 SDK 的 Whisper small 接口。
-
-实际资源来源：
-
-- Silero ONNX 从发布者的 5.1.2 wheel 提取。16 kHz 输入使用 512 样本帧、64 样本上下文和循环状态。[实际下载的 Silero wheel](https://files.pythonhosted.org/packages/98/f7/5ae11d13fbb733cd3bfd7ff1c3a3902e6f55437df4b72307c1f168146268/silero_vad-5.1.2-py3-none-any.whl) · [官方输入协议](https://github.com/snakers4/silero-vad/blob/v5.1.2/src/silero_vad/utils_vad.py)
-- ONNX Runtime 共享库从微软发布的 aarch64 wheel 提取，用于 C++ CPU 推理。头文件使用同版本标签。[实际下载的 Runtime wheel](https://files.pythonhosted.org/packages/6d/c6/c4c0860bee2fde6037bdd9dcd12d323f6e38cf00fcc9a5065b394337fc55/onnxruntime-1.20.1-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl) · [同版本 C/C++ 头文件](https://github.com/microsoft/onnxruntime/tree/v1.20.1/include/onnxruntime/core/session)
-
-## 3. 两种模式共用的整体框架
-
-```text
-编译时选择输入模式
-        |
-        +-- MIC：USB 麦克风 -> ALSA 持续采集 --------+
-        |                                         |
-        +-- FILE：本地语音片段 -> 解码/重采样 ------+
-                                                  |
-                                     统一音频格式：16k 单声道 PCM
-                                                  |
-                                      Silero VAD 检测人声起止
-                                                  |
-                                         提取完整有效语音段
-                                                  |
-                                  自行部署的 Whisper tiny + DNN/UCP
-                                                  |
-                                         实际转录文本 xxxx
-                                                  |
-                                     空文本/异常转录等有效性检查
-                                                  |
-                                    构造包含实际 xxxx 的分类提示词
-                                                  |
-                                    现有 DeepSeek-1.5B + 旧 SDK
-                                                  |
-                                    取得最终回答，分离思考内容
-                                                  |
-                                         六类结果完整校验
-                                                  |
-                                       编码 JSON -> 控制台
+# MIC：连接 USB 麦克风并确认 ALSA 设备后启动，Ctrl+C 退出。
+arecord -l
+./voice_control_mic config.json
 ```
 
-文件模式和麦克风模式只在音频获取方式上有区别，后面复用相同的 VAD、Whisper、提示词、DeepSeek 分类和 JSON 编码逻辑。文件模式不是只做转录，也不允许绕过 DeepSeek，用本地关键词匹配生成动作。
+FILE 需要板端 PATH 中有 `ffmpeg`，支持其可解码的音频，程序分块转换为 16 kHz 单声道 PCM。纯静音时只有诊断日志。可以在 FILE 命令尾部追加文件路径，程序按参数顺序处理。MIC 的 `audio.device` 需与 `arecord -l` 查到的设备一致，例如 `plughw:1,0`。中文使用 `whisper.language=zh`，英文样例用 `en`。
 
-| 模式 | 输入与生命周期 | 最终结果输出 |
-| --- | --- | --- |
-| FILE | 单次启动接收一个音频文件，按顺序处理到文件末尾，排空剩余有效语音后退出 | 按有效语音段输出零条、一条或多条结果，不以文件数量限制结果数量 |
-| MIC | 启动后持续监听，循环检测和处理有效语音输入 | 每次完成一条语音输入的识别与分类后输出一条最终 JSON，然后继续监听 |
+程序将结果逐行写到 stdout，应用日志写到 stderr。需要结果文件时，在启动命令后加 `> results/run.jsonl`，终端仍可查看转录、进度和错误。
 
-两种模式共用处理模块和按有效语音段输出结果的规则，区别是 FILE 有文件结束点，MIC 持续收音。结果数量由实际检出的有效语音段决定。进度提示、转录展示或模型调试文本不作为额外控制结果。
+## 2. 从仓库重新构建和部署
 
-Silero VAD 负责识别人声及语音起止，不负责识别文字；Whisper 负责转录，不负责决定控制动作；DeepSeek 负责理解实际转录并输出六类之一；应用负责结果校验和 JSON 编码。
+1. 进入现有的 S100 Docker。首次使用时准备仓库的 `configs/platforms/s100.local.yaml`，填写平台所需的 `board.models_root`、`board.datasets_root` 和下列工具链路径。通过 `RDK_PLATFORM_CONFIG` 可指定已有的本地配置文件。
 
-纯静音或没有有效语音时应明确报告“未检测到语音”，不将空输入强行交给 Whisper/DeepSeek 生成动作。这与有效语音必须走完整链路分开处理。
+   ```yaml
+   toolchain:
+       voice_control:
+           sdk_root: /path/to/llm-sdk-1.0
+           board_sysroot: /path/to/s100-sysroot
+           onnxruntime_root: /path/to/onnxruntime-aarch64
+           cxx: /path/to/aarch64-linux-gnu-g++
+   ```
 
-## 4. 模块职责与运行组织
+   SDK、sysroot 和 ONNX Runtime 目录各提供匹配的 `include/` 和 `lib/`。MIC 构建还依赖目标 ALSA 头文件及链接库。Docker 中需要 Python 3 和 PyYAML 读取本地配置。
+2. 在仓库根目录按需编译。脚本最后会打印二进制的完整路径，默认输出到 `/tmp/hailong/<当天日期>/voice_control/build/`。
 
-| 模块 | 职责 | 实施要求 |
-| --- | --- | --- |
-| 应用与配置 | 模式选择、资源检查、初始化、状态提示、退出 | C++，真实资源路径仅放本地配置 |
-| 音频输入 | MIC 通过 ALSA 收音；FILE 解码本地音频 | 统一采样率、声道与 PCM 格式；明确格式和时长限制 |
-| Silero VAD | 人声检测、分句、前后音频保留、长句处理 | C++ 通过 ONNX Runtime CPU 推理，FILE 与 MIC 共用 |
-| Whisper ASR | 将有效语音段转成实际文本 | 复用已部署 tiny 双 HBM 与配套资源，通过官方 DNN/UCP C++ 接口推理 |
-| DeepSeek 分类 | 将转录填入提示词，生成六类结果 | 复用原有 SDK 和模型；分类工作由 LLM 完成 |
-| 结果编码 | 校验最终标签并构造 JSON | 思考过程不能当作控制结果；无效回答归为未识别 |
-| 构建与部署 | 两种模式编译、运行包整理 | 参考 clean_async_perception；共用唯一 Docker，不自行改变构建方案 |
+   ```bash
+   bash demo/smart_car/voice_control/build.sh FILE
+   bash demo/smart_car/voice_control/build.sh MIC
+   ```
 
-MIC 需要让持续采集与耗时推理解耦，采用有界缓冲，避免无限积压；Whisper 与 DeepSeek 的调用顺序为先转录、后分类。缓冲容量、繁忙处理和超长语句策略需要在实现前明确。
+3. 把新二进制复制到板端统一运行目录。已部署的板端可直接复用同目录的 `config.json`、`lib/` 和 `models/`。首次布置时，从 [配置示例](config.example.json) 创建 `config.json`，按其中的相对路径准备模型和配套文件。目标运行库放在 `lib/`，例如 `libonnxruntime.so.1`，板端固件库沿用 `/usr/hobot/lib`。切回第 1 节启动对应模式。
 
-FILE 是一次完整的文件处理过程，不是一次整文件分类。文件可以较长，可以包含单个指令、纯静音，或多段静音、噪声与指令的混合。解码后的音频分块送入 Silero VAD；每个完整有效语音段都经过 Whisper 和 DeepSeek，再输出对应 JSON。处理到文件末尾时还需收尾最后一段语音，不能因没有尾部静音就丢弃。
+板端资源目录一览。
 
-文件总时长与 ASR 单次输入上限分开处理：长文件应按语音段逐步处理，不因整文件超过某个语音段长度就拒绝，也不一次性读入全部音频。本阶段对超过配置上限的单段语音给出丢弃提示并等待静音后继续分句，FILE 最终报告超长段数量及失败状态。上限针对单段，现有 Whisper tiny 的窗口为 30 秒。FILE 推理较慢时等待处理，不为了赶上文件播放速度而丢弃后续有效语音；MIC 的繁忙策略另行确定。
-
-| 文件内容 | 目标行为 |
+| 路径 | 内容 |
 | --- | --- |
-| 单个指令 | 检出有效语音段，经过 Whisper 和 DeepSeek，输出相应结果 |
-| 纯静音或只有静音段 | 不生成控制指令，给出未检测到有效语音的处理状态 |
-| 噪声与静音 | 不应凭噪声生成动作，检查 VAD 与后续文本/分类过滤效果 |
-| 多个指令，中间夹静音或噪声 | 按有效语音段顺序处理，可输出多条 JSON，不合并成一个整文件动作 |
-| 长文件，末尾仍有语音 | 分块解码并处理所有有效语音，文件结束时收尾后再退出 |
+| `voice_control_file`、`voice_control_mic` | 两种编译模式的程序 |
+| `config.json` | 模型路径、语言、设备、分句和队列设置 |
+| `models/deepseek/` | 板端既有 DeepSeek-R1-Distill-Qwen-1.5B HBM、tokenizer 和原聊天模板，配套旧 LLM SDK 1.0 |
+| `models/whisper_tiny/` | 本仓库部署的 Whisper tiny Encoder/Decoder HBM、Mel 滤波器、词表及解码配置 |
+| `models/silero_vad/`、`lib/` | Silero VAD 5.1.2 ONNX、ONNX Runtime 1.20.1 aarch64 CPU 库和配套 SDK 库 |
+| `examples/`、`results/` | 可选的测试音频与验证记录 |
 
-MIC 的连续检测、输入和输出不等同于跨条保留 LLM 会话历史。模型常驻、会话历史和并发是不同问题。原始需求包含多轮对话；后续明确了六类控制分类，**不能据此自行认定多轮要求已经取消**。是否跨条保留上下文、如何避免上一条指令影响下一条，仍需明确后再实现。
+模型路径相对配置文件所在目录解析。Silero 通过 ONNX Runtime CPU 推理，16 kHz 输入使用 512 样本帧和 64 样本上下文。[Silero 输入协议](https://github.com/snakers4/silero-vad/blob/v5.1.2/src/silero_vad/utils_vad.py) · [Silero 模型来源](https://pypi.org/project/silero-vad/5.1.2/) · [ONNX Runtime 库来源](https://pypi.org/project/onnxruntime/1.20.1/)
 
-## 5. LLM 输入与输出
+## 3. 控制 JSON 协议
 
-提示词必须包含 Whisper 的实际结果，例如：
-
-```text
-请根据“xxxx”指令分析，给出以下一个结果：
-前进、后退、左转、右转、停止、未识别。
-只给出最终分类结果。
-```
-
-这里的 xxxx 是当前语音段的真实转录，不是预设测试词。完整提示词的同义表达、无关语句、否定及冲突处理，应经过同一版本的小样本验证后固定；不能只修好一个样例，就认定整个分类器通过。
-
-| LLM 中文结果 | JSON 命令码 |
-| --- | --- |
-| 前进 | forward |
-| 后退 | backward |
-| 左转 | left |
-| 右转 | right |
-| 停止 | stop |
-| 未识别 | unknown |
-
-JSON 拟保留输入来源、序号、原始转录、分类结果与状态，便于以后放入 ROS2 String 消息。以下只说明格式，不是实测结果，也不是对现有代码已完成对齐的声明：
+每个进入识别流程的有效语音段产生一条 JSON。下面是 FILE 成功输出的字段示例，时间值为示意。
 
 ```json
 {
     "version": "1.0",
     "message_type": "voice_control_result",
     "sequence_id": 1,
-    "input_mode": "FILE",
+    "timestamp_ms": 1760000000000,
+    "source": {
+        "device_id": "voice_control",
+        "sensor_id": "audio_file",
+        "pipeline_id": "whisper_tiny_deepseek_v1"
+    },
     "transcript": "请向前走",
     "command": "forward",
     "command_text": "前进",
-    "status": "completed"
+    "recognized": true,
+    "status": "completed",
+    "since_audio_end_ms": 1344.0,
+    "timing_ms": {
+        "vad_compute": 30.0,
+        "vad_tail_audio": 704.0,
+        "queue": 0.0,
+        "whisper_mel": 854.0,
+        "whisper_encoder": 20.0,
+        "whisper_decoder": 49.0,
+        "deepseek_first_text": 355.0,
+        "deepseek_total": 421.0
+    }
 }
 ```
 
-本轮只向控制台输出结果。未识别、无语音、输入错误和推理失败应能区分，错误不得伪装成正常动作；具体状态字段在协议审阅时固定，不在文档中将旧草稿格式写成最终契约。
+- 用 `source.sensor_id` 区分 FILE 的 `audio_file` 和 MIC 的 `usb_microphone`。序号从每次进程启动的 1 开始，`timestamp_ms` 是 Unix 毫秒时间戳。
+- 动作映射为前进 `forward`、后退 `backward`、左转 `left`、右转 `right`、停止 `stop`、未识别 `unknown`。只有 `status=completed` 且 `recognized=true` 时可取用动作。空转录或超限转录为 `ignored`，模型错误为 `inference_error`。有错误详情时附加 `error` 字段。无有效语音时不输出结果。
+- `since_audio_end_ms` 从分句就绪计到 JSON 就绪前，包含队列等待和模型处理。VAD 推理累计耗时与尾静音音频时长分别记录，均在该边界之前。VAD 累计可包含上次结果之后的静音帧。未测阶段为 `null`。
+- 本程序只输出载荷。旧版若按 `[结果] ` 前缀提取 JSON，更新后可直接逐行解析 stdout。
 
-## 6. 工程与目录约定
+## 4. 代码入口与常用修改点
 
-代码放在本目录，平台和共享逻辑的划分参考 clean_async_perception。只建立当前功能所需的模块，不预建多层空框架。
+| 要改什么 | 入口 |
+| --- | --- |
+| 命令行、配置、FILE/MIC 主流程和退出 | [Linux 应用入口](src/platform/linux/application.cpp)，由 [main.cpp](src/main.cpp) 调用 |
+| FILE 解码或 MIC 设备 | [Linux 音频输入](src/platform/linux/audio.hpp) |
+| 语音分句、尾静音、最长语句 | [Silero 分句](src/shared/speech_segmenter.hpp)，优先修改 [运行配置](config.example.json) |
+| 分类提示词、结果校验和动作映射 | [控制协议](src/shared/command.hpp) |
+| 模型推理与计时 | [Whisper](src/platform/s100/whisper.hpp) · [DeepSeek](src/platform/s100/deepseek.hpp) |
 
-板端统一根目录使用本地配置 board.voice_control_root 记录，对应用户指定的实际位置。本文用 VOICE_DEMO_ROOT 表示该目录，公开文档不写内部路径。拟定布局：
+FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。MIC 用采集线程和有界队列，队列满时丢弃新语音段并写日志，Ctrl+C 等待在途推理结束。超过单段长度上限的语音会丢弃，FILE 会报告超长段并返回失败。应用把当前段实际转录交给 DeepSeek，逐段重置上下文。默认 `llm.thinking=false`，通过在已验证的旧 SDK 模板前缀预填空思考段实现直答。模板不匹配时报错，模型重新生成思考标记时报告推理错误。可用 `llm.thinking=true` 对照原模板。[DeepSeek 模型说明](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B#usage-recommendations)
 
-```text
-${VOICE_DEMO_ROOT}/
-  应用程序                      编译时选择 MIC 或 FILE
-  config.json                   实际资源、设备和运行参数
-  lib/                          SDK 与 ONNX Runtime 目标库
-  models/                       DeepSeek、Whisper tiny 和 Silero ONNX
-  examples/                     测试语音
-  results/                      必要测试结果
-```
+## 5. 验证记录与剩余工作
 
-统一目录内的现有 Whisper tiny 已获准使用，保留资源来源说明，并核对模型与配套文件的一致性。原有资源保留，不擅自移动或删除，不覆盖系统库。
-
-现阶段使用已验证的 `build.sh FILE` 和 `build.sh MIC` 交叉编译入口。构建时通过 `ONNXRUNTIME_ROOT` 或本地 `toolchain.voice_control.onnxruntime_root` 提供目标库目录，其中 `include/` 和 `lib/` 分别放匹配版本头文件与 aarch64 库。复用现有唯一 S100 Docker。板端统一目录的运行命令如下。
-
-```bash
-cd "${VOICE_DEMO_ROOT}"
-./voice_control_file config.json /path/to/audio.wav
-./voice_control_mic config.json
-```
-
-`vad.model` 相对配置文件目录解析，当前阈值初值为 0.5。英文样例使用 `whisper.language=en`。MIC 需配置实际 ALSA 设备，构建组织与参考工程的最终对齐另行完成。构建临时产物默认放在 `/tmp/hailong/<当天日期>/voice_control/build/`。
-
-## 7. 分阶段计划与完成条件
-
-| 阶段 | 工作内容 | 完成条件与同步点 |
-| --- | --- | --- |
-| 0. 方案纠正 | 明确两种输入共用链路与资源决策 | 已整理并恢复推进；最新选择为自行部署 Whisper tiny，文档阶段提交推送 |
-| 1. 资源核查 | 核对现有 Whisper tiny、DeepSeek/旧 SDK 和 Silero 依赖 | 已确认并取得配套资源，板端已完成加载核对 |
-| 2. 工程及接口对齐 | 确认构建组织、配置、文件分段、会话历史、繁忙/长句处理和 JSON 契约 | 两种模式接口明确，保留已获准的 tiny 资源绑定，纠正能量分句和整文件处理等不符方案的行为，再提交推送 |
-| 3. 共用处理链路 | C++ 接入 Silero，复用 Whisper tiny、DeepSeek 与结果编码 | 已随 FILE 完成板端小样本通路验证 |
-| 4. FILE 模式 | 分块处理本地音频文件，按有效语音段经过共用链路，处理完全部内容及尾段后退出 | 纯静音与长混合文件已验证，更多语言、噪声和指令样本待回归 |
-| 5. MIC 模式 | USB 设备、ALSA、持续采集、Silero 分句、缓冲、循环输入输出、退出与异常处理 | 在真实 USB 麦克风上验证持续检测及多次完整输出；文件测试不能替代麦克风验收，再提交推送 |
-| 6. 收尾 | 同版本回归两种模式，整理实测范围、耗时、内存、使用说明和缺失项 | README 与实际代码、板端资源及结果一致；未完成项如实保留 |
-
-每个小阶段都按“完成该阶段约定工作 -> 更新本文 -> 中文规范提交 -> 推送 -> 核对远端”执行。阶段提交不代表全部 Demo 已完成。
-
-## 8. 当前进度与旧草稿边界
-
-| 项目 | 当前真实状态 | 对当前目标的意义 |
-| --- | --- | --- |
-| 目标与文档纠正 | 用户已要求继续推进，并明确采用自行部署 Whisper | 本次同步最新资源决策，不恢复已取消的官方 Whisper 前置条件 |
-| 原有 DeepSeek 与旧 SDK | 曾核查资源及官方例程，原有模型可生成 | 可保留为资源和 LLM 接口核查依据 |
-| 自行部署的 Whisper tiny | 用户已确认复用，资源和草稿 C++ 接口已有基础 | ASR 来源不再阻塞；现有单样本预处理核对和转录记录可作组件依据，不等于完整链路验收 |
-| Silero VAD | 已接入，板端 FILE 已实测 | 当前两种编译模式均调用 Silero，阈值及噪声表现待真实 MIC 验证 |
-| 现有 C++ 应用 | FILE 与 MIC 均已在同一 Docker 交叉编译并更新到统一目录 | FILE 长文件分段已实测，MIC 实际采集待验证 |
-| 旧样例测试 | 曾执行合成英文及中文朗读等测试，并出现过分类误判和提示词变更后的退化 | 只作草稿排错记录，不作为纠正后方案的通过结果或正式精度 |
-| 麦克风实测 | 最近核查时无声卡，完整实测未完成 | 后续需重新检查设备及真实验证 |
-| 板端目录 | 已更新双模式程序、Silero 模型、目标库和配置 | 两个程序均解析到统一目录内的 ONNX Runtime 库 |
-| 代码快照 | 81b0d46 为此前草稿阶段提交 | 已同步不等于当前方案正确或验收通过 |
-
-当前阶段沿用逐段独立分类与现有交叉编译入口。跨段会话历史、最终 JSON 契约及参考工程的构建组织仍待对齐。
-
-2026-11-05 的原始模板基线使用英文转录配置。纯静音文件输出零条控制 JSON。36.91 秒混合文件由既有英文合成指令、31 秒静音和固定种子的噪声组成，末尾保留无尾部静音的停止指令。程序依序输出前进、右转、停止三条 JSON 并以 0 退出。基线结果在板端统一目录的 `results/silero_file_check.json`。
-
-### 直答与分阶段耗时
-
-板端配置默认 `llm.thinking=false`。旧 SDK 的公开接口缺少独立 thinking 开关，应用在内存中把原模板的生成前缀补成空思考段，随后让模型生成最终分类。模板不匹配时启动报错，直答模式遇到模型重新输出思考标记时报告推理错误。`llm.thinking=true` 可用于原模板对照。该行为依赖当前模型及已核对模板。[DeepSeek 模型说明](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B#usage-recommendations)
-
-同一混合文件的小范围板端回归结果如下，单位为秒。新增无关问句得到“未识别”，纯静音仍输出零条控制结果。明细在 `results/direct_file_check.json`。
+2026-11-05 的板端 FILE 验证使用英文转录配置。纯静音输出零条控制结果。36.91 秒混合文件包含合成指令、31 秒静音和固定种子噪声，依序输出前进、右转、停止，最后一条没有尾静音。无关问句输出未识别。记录位于板端统一目录的 `results/silero_file_check.json` 和 `results/direct_file_check.json`。
 
 | 指令 | 原模板分句后总耗时 | 直答分句后总耗时 | 直答 DeepSeek | Whisper Mel | Whisper Encoder | Whisper Decoder |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 前进 | 20.057 | 1.344 | 0.421 | 0.854 | 0.020 | 0.049 |
-| 右转 | 9.769 | 1.375 | 0.452 | 0.854 | 0.020 | 0.049 |
-| 停止 | 32.982 | 1.304 | 0.387 | 0.855 | 0.019 | 0.042 |
+| 前进 | 20.057 s | 1.344 s | 0.421 s | 0.854 s | 0.020 s | 0.049 s |
+| 右转 | 9.769 s | 1.375 s | 0.452 s | 0.854 s | 0.020 s | 0.049 s |
+| 停止 | 32.982 s | 1.304 s | 0.387 s | 0.855 s | 0.019 s | 0.042 s |
 
-结果 JSON 新增 `timing_ms`，记录 VAD 帧推理累计时间、分句尾部静音音频时长、分句就绪到开始处理的排队时间、Whisper 三阶段以及 DeepSeek 首段和总耗时。VAD 累计值可包含上一段结果后处理的静音帧，尾部静音字段是音频时长。两者都位于分句后总耗时的计时边界之前。未测到的阶段写 `null`。直答后当前样例的最大单项开销为 CPU Mel 预处理。
+直答小样本中 CPU Mel 是最大单项开销，进程峰值 RSS 为 135 MiB。以上耗时从分句完成计起，真实 MIC 还包含采集和尾静音等待。
 
-本轮仅做上述验证性测试。完整六类中英文覆盖、真实噪声和 USB 麦克风的持续采集由用户进行完整验收。
-
-## 9. 验收范围与待确认事项
-
-验收必须绑定同一组代码、提示词、模型、SDK 和参数，区分 MIC/FILE、合成语音/真人语音、中英文及实际覆盖数量。既要核对最终 JSON，也要核对转录和 LLM 最终回答，避免把 ASR 错误与分类错误混在一起。
-
-小范围验收覆盖六类指令、同义表达、无关朗读、否定/冲突、静音、噪声、损坏输入、时长边界与正常退出。FILE 必须验证单指令、纯静音、噪声与多条指令混合、长文件和文件尾段，核对是否漏段、错序、重复输出或因静音/噪声误生成动作；MIC 必须验证连续检测、多次输入输出，以及真实设备、繁忙和断开。没有设备、资源或参考时明确标未完成，不借用旧草稿或厂商成绩。
-
-耗时分别说明解码/采集边界、VAD 分句、Whisper 转录、DeepSeek 生成及最终 JSON 就绪时间；首个思考文本不能当作控制指令就绪时间。保留可核实的 Prefill/Decode 速度及测量来源、进程峰值 RSS、部署体积；缺少可靠数据时标缺失，不用 0 代替。RSS 不等于全部 BPU/驱动内存，样例耗时不是独立定长 benchmark。
-
-下一步是接入真实 USB 麦克风验证持续收音，并核对跨条会话历史要求、参考工程的构建组织及最终 JSON 契约。Whisper 固定复用已部署 tiny，不再等待另一套官方模型。FILE 按完整文件进行一次有限测试、可按有效语音段输出多条结果，MIC 持续检测输入输出，这一生命周期区别已明确；撤销此前错误的“一个文件只能输出一个结果”限制。用户已要求按计划继续推进。后续按小阶段实施，沿用已确认的模型和唯一 Docker。缺失依赖的获取和环境变更先说明范围，系统升级、重启和停止其他程序仍须另行确认。
+| 阶段 | 状态 |
+| --- | --- |
+| 资源、共同推理链路、FILE 分段 | 已接入并完成板端小样本验证 |
+| MIC 持续采集、队列与退出 | 已实现，真实 USB 连续采集、繁忙和断开留给用户验收 |
+| 应用入口、启动步骤、控制 JSON | 已整理，保留 `build.sh FILE\|MIC` 作为交叉编译入口 |
+| 跨段会话历史 | 当前逐段独立分类。待明确是否需要理解上一条指令的上下文 |
+| 完整验收 | 由用户执行，覆盖六类中文指令、噪声、否定、冲突和真实 USB 连续输入 |
