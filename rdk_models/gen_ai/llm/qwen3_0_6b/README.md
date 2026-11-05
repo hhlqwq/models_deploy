@@ -1,6 +1,6 @@
 # Qwen3-0.6B / S100
 
-当前状态: **按用户最新决定停止原始权重适配,不再作为语音 Demo 的前置任务.** 此前仅完成官方配方配置准备,未量化、编译、部署或板端实测.语音 Demo 优先复用板端原有 DeepSeek-1.5B、旧 SDK 与官方现成 Whisper;符合来源要求的 Whisper 仍待核实,不使用本仓库自行部署的模型.方案与进度见 [语音 Demo](../../../../demo/smart_car/voice_control/README.md).下文保留已提交配置的用途说明,不代表当前仍在执行该路线.
+当前状态: **按用户最新决定停止原始权重适配,不再作为语音 Demo 的前置任务.** 此前仅完成官方配方配置准备,未量化、编译、部署或板端实测.语音 Demo 复用板端原有 DeepSeek-1.5B、旧 SDK 与本仓库已部署的 Whisper tiny,ASR 来源已由用户明确确认.方案与进度见 [语音 Demo](../../../../demo/smart_car/voice_control/README.md).下文保留已提交配置的用途说明,不代表当前仍在执行该路线.
 
 使用 [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B) 原始权重和已有地瓜 LLM 2.0 SDK.原始权重位于本地平台配置的模型资源根目录下 `llm/qwen3_0.6b/original/`,不使用预编译 HBM 代替原始适配.具体下载版本仍需核实,模型许可为原目录的 LICENSE.
 

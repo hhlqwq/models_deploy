@@ -1,6 +1,6 @@
 # 小车 Demo 总体开发与工程计划
 
-总体集成仍处于设计阶段,下述统一 Makefile、CMake 和 robot_demo 接口尚未实现.语音模块当前暂停并纠正方案: 两种音频输入共用 Silero VAD、官方现成 Whisper 和原有 DeepSeek,输出控制 JSON;符合来源要求的 Whisper 资源尚待核实,不使用本仓库自行部署的模型.目标、计划和实际状态以 [voice_control](voice_control/README.md) 为准.本文其余总体构建命令仍为拟定接口,不代表已连接底盘.
+总体集成仍处于设计阶段,下述统一 Makefile、CMake 和 robot_demo 接口尚未实现.语音模块已恢复推进: 两种音频输入共用 Silero VAD、自行部署的 Whisper tiny 和板端原有 DeepSeek,输出控制 JSON;Whisper 来源已由用户明确确认.目标、计划和实际状态以 [voice_control](voice_control/README.md) 为准.本文其余总体构建命令仍为拟定接口,不代表已连接底盘.
 
 ## 组成与交付顺序
 
@@ -8,7 +8,7 @@
 
 | 子 Demo | 独立运行 | 集成时职责 | 当前范围 |
 | --- | --- | --- | --- |
-| [voice_control](voice_control/README.md) | USB 麦克风或音频文件 → Silero VAD → 官方现成 Whisper → DeepSeek → 控制 JSON | 提供六类语音指令识别结果,供后续 ROS2 集成 | 方案审阅阶段,资源待核实;目标为控制台输出,不下发运动指令 |
+| [voice_control](voice_control/README.md) | USB 麦克风或音频文件 → Silero VAD → 已部署 Whisper tiny → DeepSeek → 控制 JSON | 提供六类语音指令识别结果,供后续 ROS2 集成 | Whisper 资源已选定,Silero 与完整链路待完成;目标为控制台输出,不下发运动指令 |
 | [visual_perception](visual_perception/README.md) | RGB → Metric 深度 → 局部栅格 → A-star 绕障路径 → ROS 2/RViz2 | 接收目标并提供地图、路径和有效状态 | 单障碍物绕行路径展示,不接底盘 |
 | `robot_demo` | 后续整体联调入口 | 协调语音任务、规划、轨迹跟踪与任务反馈 | 后续开发,不预建空应用 |
 
