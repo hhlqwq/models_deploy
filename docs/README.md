@@ -13,7 +13,7 @@
 | 查看实际进度、下一步和候选方向 | [开发进度](progress.md) · [路线图](roadmap.md) |
 | 查现有精度对比口径 | [小样本输出数值对照](output_metrics.md) |
 | 按已有命令复现模型或应用 | [G720 ResNet101 与 S100 语音示例](examples/README.md) |
-| 查适配过程和排障案例 | [G720 YOLOv5s](study/Genio720_MT8189部署YOLOv5s总览.md) · [G720 MiniCPM5-2B](G720适配MiniCPM5-2B流程.md) |
+| 查适配过程和排障案例 | [G720 YOLOv5s](study/Genio720_MT8189部署YOLOv5s总览.md) · [G720 MiniCPM5-2B](study/G720适配MiniCPM5-2B流程.md) |
 | 找应用 Demo | [Demo 总览](../demo/README.md) |
 
 平台专用命令以对应的 Docker、模型和 Demo README 为准。`study/` 里的材料保留写作时的方案和实验背景，当前状态以对应项目和实际结果为准。
