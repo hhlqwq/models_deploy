@@ -1,6 +1,6 @@
 # Models Deploy
 
-面向 MediaTek Genio 720、Genio 5100 与地瓜 RDK S100 的开源模型部署仓库.模型源码与权重来自作者或官方项目;Qualcomm AI Hub Models 仅作为交付结构参考.
+面向 MTK、RDK 的开源模型部署与应用demo统一仓库.模型源码与权重来自作者或官方项目
 
 MTK 与 RDK 各自维护模型导出、量化、编译及 Python 板端推理.模型和数据集保存在 NAS,连接信息、内部路径及容器名称只写本地配置,不提交 Git.
 
@@ -9,11 +9,9 @@ MTK 与 RDK 各自维护模型导出、量化、编译及 Python 板端推理.�
 | MTK | [mtk_models](mtk_models/README.md) | [docker/mtk_g720](docker/mtk_g720/README.md) | configs/platforms/genio_720.yaml |
 | RDK S100 | [rdk_models](rdk_models/README.md) | [docker/rdk_s100](docker/rdk_s100/README.md) | configs/platforms/s100.yaml |
 
-S100 首个模型为 [Depth Anything V2 Metric Hypersim ViT-S](rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim_vits/README.md),用于室内米制深度估计.FP32 ONNX 已导出为 IR9/opset17,独立单文件 CPU 单图推理已验证.100 张校准、HBM 编译和三样本运行包上传已完成;板端三样本通路与对照已完成,正式评价待执行.NYU 日常数据已整理为 RGB PNG 与米制 FP32 NPY,原始 MAT 仅归档.
 
 模型适配与交付统一遵守 [通用模型适配 skill](.agents/skills/model-deploy/SKILL.md),覆盖 MTK 与 RDK S100;Docker 环境变更遵守 [platform-docker skill](.agents/skills/platform-docker/SKILL.md).入口职责、双报告与评价协议在对应 skill 中维护,本页不重复定义.
 
-GitHub 仓库已改名为 hhlqwq/models_deploy,本地 checkout 根目录暂保留原名称.
 
 ## MTK 使用说明
 
@@ -23,7 +21,7 @@ GitHub 仓库已改名为 hhlqwq/models_deploy,本地 checkout 根目录暂保�
 
 ## 快速开始
 
-在 `configs/storage.local.json` 配置 NAS 的 `models_root` 和 `dataset_root`,格式见 [配置示例](configs/storage.example.json).将 [G720 平台配置](configs/platforms/genio_720.yaml) 复制为同目录的 `genio_720.local.yaml`,在本地副本中填写开发板地址、容器名称和工具链路径.两份本地配置均不提交 Git;环境变量可覆盖本地平台配置,也可用 `MTK_PLATFORM_CONFIG` 指定本地平台文件.
+在 `configs/storage.local.json` 配置  `models_root` 和 `dataset_root`,格式见 [配置示例](configs/storage.example.json).将 [G720 平台配置](configs/platforms/genio_720.yaml) 复制为同目录的 `genio_720.local.yaml`,在本地副本中填写开发板地址、容器名称和工具链路径.两份本地配置均不提交 Git;环境变量可覆盖本地平台配置,也可用 `MTK_PLATFORM_CONFIG` 指定本地平台文件.
 
 在 Ubuntu 编译主机的仓库根目录进入已有容器:
 
@@ -74,7 +72,7 @@ bash mtk_models/deploy/compile.sh
 | 多文件模型的完整部署包 | 对应模型资源目录的 `models/` |
 | 主机评价、数值对照、缓存与临时文件 | 主机本地日期临时目录,不写 NAS |
 | 校准与评价数据集 | `dataset_root/` |
-| 一次性临时文件 | `/tmp/hailongcodex/当天日期/`,Windows 使用 `D:/tmp/hailongcodex/当天日期/` |
+| 一次性临时文件 | `/tmp/hailong/当天日期/`,Windows 使用 `D:/tmp/hailong/当天日期/` |
 
 主机与容器使用相同绝对路径,模型资源读写挂载、数据集只读挂载.正式模型和数据集不得以临时目录为唯一存放位置,也不得依赖指向临时目录的链接.来源记录应包含官方地址、固定版本和文件信息,内部完整路径仅保存在本地配置及运行记录中.
 
@@ -91,7 +89,7 @@ docker/              编译镜像与容器入口
 registry/            模型范围、来源索引与状态
 reports/             平台报告入口
 docs/                环境及开发板使用规范
-docs_study/          分阶段学习材料
+docs/study/          分阶段学习材料
 templates/model/     新模型交付模板
 tests/               公共代码回归测试
 ```
