@@ -10,6 +10,7 @@
 | 找应用 Demo | [Demo 总览](demo/README.md) |
 | 配置开发机、编译容器和目标设备 | [开发与测试环境](docs/environment.md) |
 | 查看仓库结构和多平台设计 | [项目架构](docs/architecture.md) |
+| 查看开发进度和候选方向 | [开发进度](docs/progress.md) · [路线图](docs/roadmap.md) |
 | 找开发规范、示例和学习资料 | [文档导航](docs/README.md) |
 
 ## 当前平台入口
