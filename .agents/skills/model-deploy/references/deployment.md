@@ -12,7 +12,9 @@
 - 原始权重、源码和正式产物保存在 NAS 模型资源目录,评价输入保存在数据集目录.过程文件放日期临时目录,不把临时目录作为正式资源的唯一存放位置.资源需明确下载 URL、版本、文件名及用途.
 - 编译环境新增依赖时先按 platform-docker skill 更新正式配方并验收全新容器,不在运行容器手工补包交付.主机和板端动态库分别核对架构及版本.
 
-## 双入口与发布
+## 现有运行入口
+
+以下为现有 MTK 和 RDK 模型脚本的行为.按任务选择独立步骤或已有入口,运行前确认自动评价与上传的范围.
 
 compile.sh 顺序执行平台所需的导出、量化、编译、固定子集浮点参考、打包和上传.板端同名入口运行相同子集,计算任务精度、浮点损失及少量数值误差,生成 summary_test.json 和必要示例,不做独立测速.
 
@@ -41,7 +43,7 @@ ncc-tflite --arch=mdla5.3 --suppress-output --disallow-bridge input.tflite -o mo
 
 MTK 原生 LLM 先读模型 ADAPTATION.md、配置及转换实现.MiniCPM5 和 DeepSeek 复用各自 host/convert.py、compile.py、package.py 与板端入口,共享 tools/llm/ 的量化适配、KV 转移和生成工具,不跨模型复制 BOS/EOS、模板或 KV Head 配置.
 
-交付包含 Prefill/Decode 双 DLA、外置 embedding、tokenizer、配置和 Python 推理代码.按实际图核对 W/A 类型与 I/O,重新量化后不得复用旧契约.KV 转移必须处理尺度差异,不能直接复制不同量化尺度的缓存.运行使用匹配的 Neuron 动态库.
+该模型运行包包含 Prefill/Decode 双 DLA、外置 embedding、tokenizer、配置和 Python 推理代码.按实际图核对 W/A 类型与 I/O,重新量化后不得复用旧契约.KV 转移必须处理尺度差异,不能直接复制不同量化尺度的缓存.运行使用匹配的 Neuron 动态库.
 
 ## 地瓜 RDK S100
 

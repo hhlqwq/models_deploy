@@ -10,7 +10,7 @@
 | [Hugging Face skills](https://github.com/huggingface/skills) | `SKILL.md` 发现入口与按需参考 |
 | [MediaTek EDPA/EDMA 说明](https://genio-community.mediatek.com/t/edpa-in-genio520-720/1902) | Genio 520/720 目标差异,结合本项目编译与 Runtime 诊断 |
 
-MediaTek 工具、系统发布和算子支持资料优先沿仓库 `docs/environment.md`、`docs/genio_720.md` 与 `docs_study/` 中官方入口查询.页面要求 MOL/NDA 登录时标为需授权,不把搜索摘要当作完整支持列表.
+MediaTek 工具、系统发布和算子支持资料优先沿仓库 `docs/environment.md`、`docs/genio_720.md` 与 `docs/study/` 中官方入口查询.页面要求 MOL/NDA 登录时标为需授权,不把搜索摘要当作完整支持列表.
 
 新增模型选型与评测协议参考以下官方入口,使用时继续查看具体型号的模型卡、精度表和评价代码,目录或演示支持列表本身不证明评测协议:
 
@@ -24,7 +24,7 @@ MediaTek 工具、系统发布和算子支持资料优先沿仓库 `docs/environ
 
 核对的是已有权重的精度评测集及其划分,不是为本仓库规划训练.页面只写了数据集名称、支持 COCO 格式或给出训练信息时,不能据此认定具体精度使用了 COCO val2017;未公开的评测细节保持未核实.厂商精度用于选型参考,各目标平台指标仍需本仓库同协议实测.
 
-项目事实以当前 skills、平台配置、模型总览、注册表及模型源码/来源/结果为准,不要求恢复已删除的 AGENTS.md.MTK 公共工具为 tools/deploy.py、tools/board.py;S100 为 tools/rdk_config.py、tools/rdk_deploy.py;共用评价接口为 tools/evaluation.py,其他汇总与展示复用现有实现.现有 C++ 实现待迁移,不作为新模型的推荐实现.采用外部 skill 的分阶段思路时必须遵守本项目 Python 推理、compile.sh/evaluate.sh 双入口和summary_test.json / summary.json 双报告约定.
+项目事实以平台配置、模型总览、注册表及模型源码、来源记录和结果为准.MTK 公共工具为 tools/deploy.py、tools/board.py,S100 为 tools/rdk_config.py、tools/rdk_deploy.py,共用评价接口为 tools/evaluation.py.现有模型的运行入口和按需评价见 deployment.md 与 evaluation.md.独立 Demo 的实现语言和运行环境由应用工程定义.
 
 README 数字和注册状态仅用于定位已有证据,不能证明当前设备状态或新运行成功.正式移植来源不明确时保持 pending,厂商选型、评测协议及交付参考不能替代官方模型源.
 
