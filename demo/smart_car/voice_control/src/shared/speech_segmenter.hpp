@@ -43,7 +43,7 @@ public:
         for (std::size_t i = 0; i < output_names_.size(); ++i) {
             output_names_[i] = session_.GetOutputNameAllocated(i, allocator).get();
         }
-        std::cout << "[加载] Silero VAD,CPU Runtime " << Ort::GetVersionString() << std::endl;
+        std::cerr << "[加载] Silero VAD,CPU Runtime " << Ort::GetVersionString() << std::endl;
     }
 
     // 文件之间清空循环状态,一个输入流内跨帧保留上下文.

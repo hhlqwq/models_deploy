@@ -79,7 +79,7 @@ public:
         if (pcm.empty() || pcm.size() > 480000) {
             throw std::runtime_error("音频必须为 0 到 30 秒的 16k 单声道 PCM.");
         }
-        std::cout << "[识别] 计算 Mel,运行 Whisper tiny." << std::endl;
+        std::cerr << "[识别] 计算 Mel,运行 Whisper tiny." << std::endl;
         auto started = std::chrono::steady_clock::now();
         auto mel = Mel(pcm);
         auto now = std::chrono::steady_clock::now();
@@ -156,7 +156,7 @@ public:
                 text += ranks_.at(token);
             }
             if (++generated % 32 == 0) {
-                std::cout << "[识别] 已生成 " << generated << " Token." << std::endl;
+                std::cerr << "[识别] 已生成 " << generated << " Token." << std::endl;
             }
             if (generated >= max_generated_) {
                 break;

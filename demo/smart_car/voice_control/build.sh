@@ -57,7 +57,8 @@ echo "[构建] voice_control,$mode,SDK 1.0 C++"
     "-DVOICE_INPUT_$mode" -I"$root/src" \
     -isystem "$OELLM_SDK_ROOT/include" -isystem "$S100_BOARD_SYSROOT/include" \
     -isystem "$ONNXRUNTIME_ROOT/include" -L"$ONNXRUNTIME_ROOT/lib" \
-    "$root/src/main.cpp" -L"$OELLM_SDK_ROOT/lib" -L"$S100_BOARD_SYSROOT/lib" \
+    "$root/src/main.cpp" "$root/src/platform/linux/application.cpp" \
+    -L"$OELLM_SDK_ROOT/lib" -L"$S100_BOARD_SYSROOT/lib" \
     -Wl,--allow-shlib-undefined -Wl,--disable-new-dtags \
     '-Wl,-rpath,$ORIGIN/lib:/usr/hobot/lib' \
     "${libraries[@]}" -o "$VOICE_BUILD_DIR/voice_control_${mode,,}"

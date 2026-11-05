@@ -50,7 +50,7 @@ public:
         params.k_cache_int8 = false;
         // 上下文采用旧库默认值;固定分类使用官方支持的贪心采样.
         params.sampling.temp = 0.0F;
-        std::cout << "[加载] DeepSeek,旧 SDK 1.0,thinking=" << (thinking_ ? "on" : "off") << std::endl;
+        std::cerr << "[加载] DeepSeek,旧 SDK 1.0,thinking=" << (thinking_ ? "on" : "off") << std::endl;
         const int code = xlm_init(&params, Callback, &handle_);
         if (code != 0) {
             if (handle_) {
@@ -73,7 +73,7 @@ public:
     // 下一次推理设置 new_chat,按官方示例清空 SDK 内部会话.
     void Reset() {
         new_chat_ = true;
-        std::cout << "[会话] 下轮开始新会话." << std::endl;
+        std::cerr << "[会话] 下轮开始新会话." << std::endl;
     }
 
     // 返回上一轮正常完成的原始文本,供固定标签解析而非关键词猜测.
@@ -96,7 +96,7 @@ public:
         Reply reply;
         reply.print_raw = print_raw_;
         reply.started = std::chrono::steady_clock::now();
-        std::cout << "[生成] 分析语音指令." << std::endl;
+        std::cerr << "[生成] 分析语音指令." << std::endl;
         const int code = xlm_infer(handle_, &input, &reply);
         // 实际旧库可能在完成回调前返回,保持请求及 userdata 存活到终态.
         std::unique_lock<std::mutex> lock(reply.mutex);
@@ -107,7 +107,7 @@ public:
                 }
             }
         }
-        std::cout << std::endl;
+        std::cerr << std::endl;
         timing.first_text_ms = reply.first_text_ms;
         timing.total_ms = std::chrono::duration<double, std::milli>(
             std::chrono::steady_clock::now() - reply.started).count();
@@ -166,7 +166,7 @@ private:
             }
             position += count;
         }
-        std::cout << reply.pending.substr(0, position) << std::flush;
+        std::cerr << reply.pending.substr(0, position) << std::flush;
         reply.pending.erase(0, position);
     }
 
