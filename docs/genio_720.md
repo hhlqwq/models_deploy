@@ -1,4 +1,4 @@
-# Genio 720 板端规范
+# Genio 720 板端指南
 
 ## 平台配置
 
@@ -12,7 +12,7 @@
 
 主机 compile.sh 完成导出、量化、编译及固定子集浮点精度后,自动上传部署文件及必要参考.用户登录板端执行 compile.sh,完成同子集 NPU 精度、损失、固定少量输入的 CosSim/RMSE/NRMSE 和示例,保存 results/summary_test.json.全量 evaluate.sh 不重复采集数值参考.主机不会自动启动板端推理.普通入口无参数,主机总入口为 mtk_models/deploy/compile.sh 与 evaluate.sh,板端为 deploy/compile_board.sh 与 evaluate_board.sh;各入口依次运行全部模型,首个失败即停止.
 
-入口直接顺序调用命令,输出和错误直接显示在终端,只补充必要阶段提示,不默认保存编译日志.Docker 公共环境由创建容器入口统一设置,板端路径复用公共工具.只保存运行、评分和排错必需的数据.
+总入口同时显示终端输出并保存本地日志.主机日志在 `mtk_models/deploy/compile.log` 和 `mtk_models/deploy/evaluate.log`,板端日志在部署根目录的 `deploy/` 下.每次总入口运行覆盖对应日志.板端总入口通过 `deploy/common.sh` 回传已有结果和示例.Docker 公共环境由创建容器入口设置,各模型按需使用自己的步骤.
 
 ## 独立评价
 
@@ -24,11 +24,11 @@
 bash evaluate.sh
 ```
 
-评价入口使用已有 DLA 和 Python 脚本,执行完整精度评价、必要预热和性能统计,采集推理进程峰值 RSS,最终只给出 `results/summary.json`.不重新量化或编译;结束后调用 compile.sh 的仅回传分支,不会重新运行模型.重复评价成功后更新这一个报告,运行编号、数据集范围、版本和缺失项写在报告内部.
+评价入口使用已有 DLA 和 Python 脚本,按配置执行精度评价、必要预热和性能统计,采集推理进程峰值 RSS,写入 `results/summary.json`.板端总入口在各模型评价结束后调用公共回传函数.重复评价成功后更新对应报告,运行编号、数据集范围、版本和缺失项写在报告内部.
 
 所有模型的中间预测、日志和内部指标统一位于各自部署目录的 `build/work/`.compile 和 evaluate 开始推理时覆盖该模型上次的 build/work,后续评分、展示和报告步骤复用同一目录;不按日期、阶段或运行编号累积目录,不写入板端 /tmp 内存盘.失败现场保留到下次推理开始,不拿上次指标冒充本次结果.覆盖范围只限本模型 build/work,不影响 models、examples、results 或其他模型.历史 /tmp/hailongcodex 不自动迁移或清理.
 
-MiniCPM 正式评价为 MMLU 固定 1000 题、57 学科、seed=17 的分层子集与完整 WikiText2 test,不复用旧 `evaluation/full/` 资源.DeepSeek 仍使用 MMLU 完整 14042 题及完整 WikiText2 test.若已有上下文不足,明确报错,不截题或自动重编译.Python 生成使用官方 Token 输入,样例速度不能标为标准定长基准.新接入评价代码不代表已完成实测,成绩以对应版本的实际报告为准.
+MiniCPM 和 DeepSeek 的现有独立评价协议使用 MMLU 固定 1000 题、57 学科、seed=17 的分层子集和完整 WikiText2 test.实际范围和上下文约束以对应模型配置为准.Python 生成使用官方 Token 输入,样例速度和标准定长基准分别记录.
 
 ## 目录
 

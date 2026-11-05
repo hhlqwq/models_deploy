@@ -17,7 +17,7 @@
 | 目标 | 模型目录 | 平台配置 | 环境 |
 | --- | --- | --- | --- |
 | MTK Genio 720 | [mtk_models](mtk_models/README.md) | [genio_720.yaml](configs/platforms/genio_720.yaml) | [G720 板端](docs/genio_720.md) · [G720 Docker](docker/mtk_g720/README.md) |
-| RDK S100 | [rdk_models](rdk_models/README.md) | [s100.yaml](configs/platforms/s100.yaml) | [S100 Docker](docker/rdk_s100/README.md) |
+| RDK S100 | [rdk_models](rdk_models/README.md) | [s100.yaml](configs/platforms/s100.yaml) | [S100 开发与运行](docs/platforms/s100.md) · [S100 Docker](docker/rdk_s100/README.md) |
 | MTK Genio Pro 5100 | 待接入 | [genio_5100.yaml](configs/platforms/genio_5100.yaml) 占位 | 待核实实际设备与工具链 |
 
 从对应平台的 Docker 文档进入已有环境，再看模型 README 中的命令。现有部分 `deploy/compile.sh` 会同时准备子集参考并上传到目标设备，运行前先核对本地配置和入口行为。`deploy/evaluate.sh` 用于按需评价已有制品。模型、数据集和 SDK 通过本地配置定位，内部路径与连接信息留在 Git 忽略的本地文件中。
