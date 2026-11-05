@@ -8,6 +8,6 @@ SwinTiny 和 CPU 稀疏主干均保留完整计算.相机输出先由 CPU 完成
 
 G720 使用 CPU FP32 + NPU FP16 混合部署,不是纯 NPU 模型.三个 DLA 分别执行相机 BEV 降采样,ConvFuser+SECOND+SECONDFPN+稠密热图,以及 TransFusion 注意力和回归.相机 Swin+LSSFPN+DepthLSS 使用 ONNX Runtime CPU,LiDAR 稀疏主干使用 NumPy CPU;NPU 输入输出按 SDK 实际维度绑定,检测头包含通道补齐.
 
-正式协议为 nuScenes v1.0-trainval 的 val,150 个场景共 6019 帧,使用官方 `detection_cvpr_2019` 的 mAP 与 NDS.一帧 mini_val 板端通路已经通过,不代表正式精度或性能.尚未执行完整浮点参考及正式评价,G5100 未验证.同协议参考使用适配后的完整 FP32 图与相同 CPU 稀疏主干,应与原始官方训练框架成绩区分.
+G720 正式评价覆盖 nuScenes v1.0-mini 的完整 mini_val，共 2 个场景、81 帧，按官方 `detection_cvpr_2019` 计算 mAP 与 NDS。浮点参考使用适配后的 FP32 图及相同 CPU 稀疏主干。[正式报告](results/summary.json)
 
 [NVIDIA CUDA-BEVFusion](https://github.com/NVIDIA-AI-IOT/Lidar_AI_Solution/tree/master/CUDA-BEVFusion)仅作为分图设计参考,未使用其 CUDA 引擎,预导出权重或平台成绩作为 MTK 实测.

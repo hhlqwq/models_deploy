@@ -4,23 +4,23 @@
   "top5_yamnet": [
     {
       "class": "Silence",
-      "score": 0.7020228505134583
+      "score": 0.7016571164131165
     },
     {
       "class": "Dog",
-      "score": 0.10930480808019638
+      "score": 0.1210174560546875
     },
     {
       "class": "Domestic animals, pets",
-      "score": 0.10670166462659836
+      "score": 0.11676635593175888
     },
     {
       "class": "Animal",
-      "score": 0.08490295708179474
+      "score": 0.08845214545726776
     },
     {
       "class": "Bow-wow",
-      "score": 0.080530546605587
+      "score": 0.0850830078125
     }
   ]
 }

@@ -1,0 +1,45 @@
+{
+  "model": "mobilefacenet",
+  "evaluation_scope": "subset",
+  "status": "complete",
+  "samples": 500,
+  "accuracy": {
+    "LFW 验证准确率": {
+      "fp32_accuracy": 0.996,
+      "npu_accuracy": 0.994,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 0.20000000000000018
+    }
+  },
+  "sample_unit": "face_pair",
+  "sampling": "fixed_task_subset_v2",
+  "sample_ids_sha256": "2e87506953a71f09c584f8b85ce52f721b80dd1eb58b7915e2dbf0e267821a97",
+  "dla_artifacts": {
+    "model_int8.dla": "90577536299ca1a422ac1a4b83db57a1c2c05aa9ffa84437c865e5f7f4836376"
+  },
+  "loss_definition": "正值表示 NPU 相对浮点精度下降,负值表示改善",
+  "run_id": "20261030_080337_1720268",
+  "output_errors": {
+    "scope": "compile_fixed_subset",
+    "compared_calls": 5,
+    "comparison_basis": "deployment_output_including_preprocessing",
+    "sample_ids": [
+      "AJ_Lamas_0001.jpg",
+      "Aaron_Eckhart_0001.jpg",
+      "Aaron_Guiel_0001.jpg",
+      "Aaron_Patterson_0001.jpg",
+      "Aaron_Peirsol_0001.jpg"
+    ],
+    "nrmse_definition": "100 * RMSE / RMS(reference)",
+    "outputs": {
+      "output": {
+        "cosine_similarity": 0.9937341936436583,
+        "rmse": 0.16784499807368403,
+        "nrmse_percent": 11.176919572287886,
+        "elements": 640,
+        "calls": 5,
+        "unavailable": []
+      }
+    }
+  }
+}

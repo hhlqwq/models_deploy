@@ -1,36 +1,65 @@
 {
-  "status": "python_pending_board_validation",
+  "schema_version": 1,
   "model": "yolov5s",
-  "run_id": "20261008_032807_67603",
-  "dataset": "coco_val2017",
-  "images": 5000,
-  "npu_mean_ms": 9.756748,
-  "peak_rss_mib": 33.2265625,
-  "memory_scope": "板端 C++ 全量推理进程峰值 RSS",
-  "int8_map_50_95": 0.35859860348732847,
-  "fp32_map_50_95": 0.37087097445191436,
-  "accuracy_loss_percentage_points": 1.2272370964585888,
-  "fp32_baseline_source": "本次 ONNX FP32 全量实测,COCO val2017,conf=0.001,IoU=0.6,max_det=300",
-  "model_size": {
-    "unit": "MB",
-    "source_weights": null,
-    "fp32_onnx": null,
-    "quantized_tflite": null,
-    "compiled_dla": 7.66,
-    "auxiliary_weights": null,
-    "deployment_total": 7.66,
-    "files": [
-      {
-        "file": "model_int8.dla",
-        "size_mb": 7.66,
-        "role": "compiled_dla"
+  "run_id": "20261103_074754_1918236",
+  "status": "complete",
+  "evaluation_scope": "full",
+  "evaluation": {
+    "model": "yolov5s",
+    "backend": "npu",
+    "scope": "full",
+    "samples": {
+      "count": 5000,
+      "unit": "image",
+      "selection_id": "fceb5cb3ce42ec20794c87fa9f6ed87f668fe14727ab8550bfe73904085f63c5"
+    },
+    "metrics": {
+      "mAP@0.5:0.95": {
+        "value": 0.358756794346109,
+        "unit": "ratio",
+        "higher_is_better": true
       }
-    ],
-    "source": "board_file_stat",
-    "directory": "<board_root>/open_models/yolov5s/models",
-    "collected_on": "2026-10-12",
-    "scope": "current_deployment_files_not_reverified_original_run"
+    }
   },
-  "metrics_scope": "迁移前 C++/原生 CLI 的历史记录,当前 Python 推理尚未验证",
-  "target_backend": "python_neuron_runtime_hw"
+  "dataset": "coco_val2017",
+  "samples": 5000,
+  "metric": "mAP@0.5:0.95",
+  "board_accuracy": 0.358756794346109,
+  "reference_accuracy": 0.3708552934169255,
+  "reference_source": "本次同模型同协议浮点全量实测",
+  "accuracy_change_percentage_points": -1.2098499070816504,
+  "comparison_status": "matched_reference",
+  "performance": {
+    "npu_mean_ms": 9.723137393500656,
+    "npu_p95_ms": 9.794161887839437,
+    "scope": "常驻模型,所选图片的 NeuronRuntime_inference 调用",
+    "peak_process_rss_mib": 583.5390625,
+    "memory_scope": "推理进程峰值 RSS,不等于设备总内存或驱动专用内存",
+    "end_to_end_ms": {
+      "mean": 73.86734535926954,
+      "p95": 113.43366985674948
+    },
+    "end_to_end_scope": "常驻 Python 进程的逐图预处理、推理和后处理"
+  },
+  "runtime": {
+    "backend": "python_neuron_runtime_hw",
+    "machine": "aarch64",
+    "kernel": "6.6.137-mtk+ga246e0c68c39-g429091ed5965"
+  },
+  "model_files": [
+    {
+      "file": "model_int8.dla",
+      "bytes": 7655399
+    }
+  ],
+  "accuracy": {
+    "mAP@0.5:0.95": {
+      "fp32_accuracy": 0.3708552934169255,
+      "npu_accuracy": 0.358756794346109,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 1.2098499070816504
+    }
+  },
+  "sample_unit": "image",
+  "sample_ids_sha256": "fceb5cb3ce42ec20794c87fa9f6ed87f668fe14727ab8550bfe73904085f63c5"
 }

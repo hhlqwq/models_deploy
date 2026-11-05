@@ -1,125 +1,122 @@
 {
   "schema_version": 1,
   "model": "deepseek_r1_distill_qwen_1_5b",
-  "run_id": "20261022_deepseek_w4a16_subset",
-  "status": "partial",
-  "quality_status": "accuracy_degraded",
-  "evaluation_scope": "subset",
+  "run_id": "20261104_080016_2242130",
+  "status": "complete",
+  "evaluation_scope": "full",
+  "evaluation": {
+    "model": "deepseek_r1_distill_qwen_1_5b",
+    "backend": "npu",
+    "scope": "full",
+    "samples": {
+      "count": 1000,
+      "unit": "question",
+      "selection_id": "42935dbd81c2a2ca0bdadade816cbb63f78d4d7616f0a8d49a05cba37dc85091"
+    },
+    "metrics": {
+      "MMLU Accuracy": {
+        "value": 0.345,
+        "unit": "ratio",
+        "higher_is_better": true
+      }
+    }
+  },
   "full_benchmark_evaluated": false,
+  "accuracy": {
+    "MMLU Accuracy": {
+      "fp32_accuracy": 0.372,
+      "npu_accuracy": 0.345,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 2.7000000000000024
+    }
+  },
+  "accuracy_scope": "fixed_1000_mmlu_and_full_wikitext2",
+  "reference": {
+    "checkpoint_dtypes": [
+      "torch.bfloat16"
+    ],
+    "parameter_dtypes": [
+      "torch.float32"
+    ],
+    "checkpoint_bytes": 3554214621,
+    "parameter_count": 1777088000,
+    "origin": "local_reference_from_official_weights_not_official_benchmark",
+    "device": "cuda",
+    "cuda_matmul_tf32": false,
+    "torch_version": "2.0.0+cu118"
+  },
+  "quality_assessment": {
+    "status": "measured_difference_not_automatically_accepted",
+    "error_attribution": "unverified_without_matched_sdk_float_and_w4a16_software_comparison"
+  },
+  "performance": {
+    "prefill_tokens_per_second": 373.3254477474443,
+    "decode_tokens_per_second": 8.926563298951828,
+    "scope": "fixed_128_input_max_128_generated_performance",
+    "input_tokens": 128,
+    "generated_tokens": 128,
+    "peak_process_rss_mib": 903.80859375,
+    "memory_scope": "本次生成、定长测速和精度评价各进程峰值的最大值",
+    "timing_scope": "常驻 Python 生成流程的 Prefill/Decode 阶段,含各阶段输入和 KV 处理",
+    "prefill_npu_ms": 334.6765390597284,
+    "decode_npu_ms": 11253.727542702109,
+    "decode_calls": 127,
+    "generation_elapsed_seconds": 14.589784384705126,
+    "unavailable_metrics": [],
+    "unavailable_checks": [],
+    "warmup_runs": 1,
+    "measured_runs": 1,
+    "functional_failures": []
+  },
   "precision": "asym4W_sym16A",
   "context": 1024,
   "prefill": 128,
+  "precision_settings": {
+    "attention": "asym4W_sym16A",
+    "mlp": "asym4W_sym16A",
+    "lm_head": "asym4W_sym16A",
+    "quantized_prefix": "DeepSeek-R1-Distill-Qwen-1.5B_asym4W_sym16A_Overall_hessian_hessian_stable",
+    "weight_optimization": "hessian",
+    "weight_optimization_options": {
+      "hessian_opt_stability_ratio": 0.1
+    },
+    "rotate": false,
+    "rotate_mode": "hadamard",
+    "rotate_seed": 0
+  },
   "source": {
     "repo": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
     "revision": "ad9f0ae0864d7fbcd1cd905e3c6c5b069cc8b562"
   },
-  "quantization": {
-    "calibration_batches": 32,
-    "calibration_samples": 16,
-    "calibration_scope": "authored_bilingual",
-    "weight_optimization": "none",
-    "rotate": false,
-    "mask_value": -10000,
-    "native_io": "INT16"
-  },
-  "execution": {
-    "quantization": "completed",
-    "dual_dla_compilation": "completed",
-    "board_generation": "completed",
-    "generation_samples": 2,
-    "generation_limit_tokens": 32,
-    "implementation": "python_neuron_runtime_hw"
-  },
-  "accuracy": {
-    "mmlu": {
-      "questions": 16,
-      "seed": 17,
-      "fp32_correct": 12,
-      "npu_correct": 5,
-      "fp32_accuracy": 0.75,
-      "npu_accuracy": 0.3125,
-      "difference_percentage_points": -43.75,
-      "dataset": "cais/mmlu",
-      "split": "test",
-      "shots": 0,
-      "subjects": 13,
-      "maximum_prompt_tokens": 344,
-      "selected_source_question_ids": [
-        441,
-        1804,
-        2862,
-        4078,
-        4559,
-        4745,
-        4971,
-        5990,
-        6785,
-        8552,
-        8850,
-        10836,
-        11537,
-        11553,
-        12551,
-        13216
-      ],
-      "scoring": "argmax_single_token_continuation_space_ABCD",
-      "chat_template": false,
-      "tflite_correct": 5,
-      "tflite_accuracy": 0.3125
-    },
-    "wikitext": {
-      "blocks": 4,
-      "scored_tokens": 508,
-      "fp32_ppl": 93.38108825683594,
-      "npu_ppl": 135.6518655454918,
-      "difference": 42.270777288655864,
-      "dataset": "Salesforce/wikitext",
-      "config": "wikitext-2-raw-v1",
-      "split": "test",
-      "block_tokens": 128,
-      "reset_context_each_block": true,
-      "chat_template": false,
-      "selection": "first_four_blocks_of_raw_test_text",
-      "tflite_ppl": 131.80234866235455
-    }
-  },
-  "performance": {
-    "status": "not_measured"
-  },
-  "memory": {
-    "status": "not_measured"
-  },
-  "model_size": {
-    "unit": "MB",
-    "compiled_dla": 1579.195298,
-    "auxiliary_weights": 466.747392,
-    "deployment_total": 2045.94269,
-    "files": [
-      {
-        "file": "1024c/prompt.dla",
-        "size_mb": 790.24778
-      },
-      {
-        "file": "1024c/decode.dla",
-        "size_mb": 788.947518
-      },
-      {
-        "file": "tokenizer/embedding_int16.bin",
-        "size_mb": 466.747392
-      }
-    ]
-  },
   "runtime": {
-    "soc": "MT8189",
+    "backend": "python_neuron_runtime_hw",
     "machine": "aarch64",
-    "kernel": "6.6.137-mtk+ga246e0c68c39-g429091ed5965",
-    "reference_device": "cpu",
-    "reference_precision": "FP32"
+    "kernel": "6.6.137-mtk+ga246e0c68c39-g429091ed5965"
   },
-  "missing_items": [
-    "完整 MMLU 和 WikiText2 精度",
-    "标准性能与进程峰值 RSS"
+  "model_files": [
+    {
+      "file": "models/1024c/DeepSeek-R1-Distill-Qwen-1.5B_asym4W_sym16A_28layer_prefill_128t_1024c.dla",
+      "bytes": 790247802
+    },
+    {
+      "file": "models/1024c/DeepSeek-R1-Distill-Qwen-1.5B_asym4W_sym16A_28layer_decode_1t_1024c.dla",
+      "bytes": 788947539
+    },
+    {
+      "file": "models/tokenizer/embedding_int16.bin",
+      "bytes": 466747392
+    }
   ],
-  "metrics_scope": "当前 Python 实现的固定 16 题和 4 文本块回归,不代表全量精度",
-  "target_backend": "python_neuron_runtime_hw"
+  "wikitext": {
+    "blocks": 2336,
+    "scored_tokens": 296672,
+    "protocol": "full_test_block128_v1",
+    "fp32_ppl": 108.95990753173828,
+    "npu_ppl": 134.7543759773807,
+    "difference": 25.794468445642423,
+    "difference_percent": 23.673357503656934
+  },
+  "samples": 1000,
+  "sample_unit": "question",
+  "sample_ids_sha256": "42935dbd81c2a2ca0bdadade816cbb63f78d4d7616f0a8d49a05cba37dc85091"
 }

@@ -1,7 +1,5 @@
 # DeepSeek-R1-Distill-Qwen-1.5B
 
-> 既有 Python 实现已完成板端生成检查和固定小样本回归.当前 16 段训练校准候选已完成软件小样本对照和双 DLA 编译,尚未上传或进行新候选板端验证;全量精度、标准性能及 RSS 尚未评价.
-
 使用 [DeepSeek 官方权重](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B),面向 Genio 720 部署全 W4A16 模型.来源与许可见[模型卡](model_card.md)和[资源记录](models/source_url.txt).
 
 适配约定、精度问题及修复依据见 [ADAPTATION.md](ADAPTATION.md).评价范围与指标见[唯一报告](results/summary.json).
@@ -16,7 +14,7 @@
 
 训练文本段数由 `native.calibration_train_samples` 控制,当前为 16 段,每段固定 256 Token,另保留 8 条双语输入.历史 8 段配方保留原来的均匀取样;新增覆盖从至少 32 个均匀候选位置选取,使 16/32 段对照可复用同一校准池.启用训练文本时,`calibration_batches` 必须为 `2 * (calibration_train_samples + 8)`,例如 16 段对应 48 批次,32 段对应 80 批次.未启用训练文本时使用原有 16 条双语输入和 32 批次.不匹配的配置会在替换转换目录前报错,避免实际只覆盖部分输入.
 
-当前编译配置选择不旋转、16 段混合训练文本校准、Hessian 稳定性 0.1 的待板端复核候选,尚未确认全量质量.[唯一报告](results/summary.json)保留旧无优化基线的小样本实测,不代表当前候选已完成板端评价.候选对照、独立 64 题复核和逐层局部误差见 [适配说明](ADAPTATION.md).
+本次实测采用不旋转、16 段混合训练文本校准和 Hessian 稳定性 0.1。候选对照和逐层误差见 [适配说明](ADAPTATION.md)。
 
 进入已有编译容器,在本模型目录执行:
 
@@ -47,6 +45,33 @@ bash evaluate.sh
 ```
 
 板端核对部署模型与参考输入后,采集生成样例、128 Token 输入/最多 128 Token 输出的Python Prefill/Decode 阶段速度及进程 RSS,再执行约定的千题 MMLU 和完整 WikiText2 test.最终只发布 `results/summary.json`.速度按实际生成数量记录,Python 阶段速度与纯 NPU 调用耗时分开标注,未采集分项明确列出.板端预测与内部指标统一保存在本模型部署目录的 build/work/,每次开始推理时覆盖.
+
+## G720 实测结果
+
+正式评价覆盖 MMLU 固定千题、完整 WikiText2 test。主指标计分 1,000 题，运行编号 `20261104_080016_2242130`。[正式报告](results/summary.json)
+
+| 指标 | 浮点参考 | G720 | 损失 |
+| --- | ---: | ---: | ---: | ---: |
+| MMLU Accuracy | 37.200% | 34.500% | +2.700 个百分点 |
+| WikiText2 PPL（2,336 块，296,672 个计分 Token） | 108.960 | 134.754 | +25.794（+23.67%） |
+
+板端性能为 Prefill 373.33 Token/s，Decode 8.93 Token/s，Python 进程峰值 RSS 为 903.81 MiB。
+MMLU 使用固定 1000 题、57 学科、seed=17。性能使用 128 Token 输入和实际生成的 128 Token。
+
+编译子集主指标计分 100 题，运行编号 `20261030_091702_1750935`。[子集报告](results/summary_test.json)
+
+| 指标 | 浮点参考 | G720 | 损失 |
+| --- | ---: | ---: | ---: | ---: |
+| MMLU Accuracy | 34.000% | 35.000% | -1.000 个百分点 |
+| WikiText2 PPL（16 块，2,032 个计分 Token） | 106.660 | 127.642 | +20.982（+19.67%） |
+
+损失为正表示退化。子集报告中的输出误差仅覆盖下表所列调用。
+
+| 输出 | 调用次数 | CosSim | RMSE | NRMSE |
+| --- | ---: | ---: | ---: | ---: |
+| `output` | 2 | 0.923797 | 1.22253 | 42.619% |
+
+[中文板端示例](examples/output/zh_demo.txt) · [英文板端示例](examples/output/en_demo.txt)
 
 ## 模型约定
 

@@ -1,99 +1,103 @@
 {
+  "schema_version": 1,
   "model": "minicpm5_2b",
-  "run_id": "20261014_minicpm5_w4_light_hessian_v8",
-  "scope": "first_round_subset_not_full_benchmark",
-  "status": "python_pending_board_validation",
-  "precision": "asym4W_sym16A",
-  "prefill": 128,
-  "context": 1024,
-  "formal_accuracy_evaluated": true,
-  "full_benchmark_evaluated": false,
-  "accuracy": {
-    "mmlu": {
-      "shots": 0,
-      "questions": 1000,
-      "subjects": 57,
-      "seed": 17,
-      "fp32_correct": 559,
-      "npu_correct": 413,
-      "fp32_accuracy": 0.559,
-      "npu_accuracy": 0.413,
-      "accuracy_drop_percentage_points": 14.600000000000007,
-      "prediction_agreement": 0.497,
-      "cases_sha256": "d13e6f3c1a79d8dc8592fdfbf409e53035dda9e6186e6faf36bfdd48da138b6a",
-      "npu_scoring_seconds": 649.2802480391692
+  "run_id": "20261104_072603_2241265",
+  "status": "complete",
+  "evaluation_scope": "full",
+  "evaluation": {
+    "model": "minicpm5_2b",
+    "backend": "npu",
+    "scope": "full",
+    "samples": {
+      "count": 1000,
+      "unit": "question",
+      "selection_id": "42935dbd81c2a2ca0bdadade816cbb63f78d4d7616f0a8d49a05cba37dc85091"
     },
-    "wikitext": {
-      "text_rows": 128,
-      "blocks": 58,
-      "scored_tokens": 7366,
-      "fp32_ppl": 40.04114532470703,
-      "npu_ppl": 48.382059098257,
-      "relative_ppl_increase_percent": 20.83085712436723,
-      "selected_text_sha256": "6605c41acd8bc0bfeb0f1acb43e31437da857e03135b21b097d16756ccaba84c"
+    "metrics": {
+      "MMLU Accuracy": {
+        "value": 0.413,
+        "unit": "ratio",
+        "higher_is_better": true
+      }
     }
   },
-  "performance_summary": {
-    "unit": "token/s",
-    "prefill_tokens_per_second": 288.6660246854555,
-    "decode_tokens_per_second": 8.14848,
+  "full_benchmark_evaluated": false,
+  "accuracy": {
+    "MMLU Accuracy": {
+      "fp32_accuracy": 0.559,
+      "npu_accuracy": 0.413,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 14.600000000000007
+    }
+  },
+  "accuracy_scope": "fixed_1000_mmlu_and_full_wikitext2",
+  "reference": {
+    "checkpoint_dtypes": [
+      "torch.bfloat16"
+    ],
+    "parameter_dtypes": [
+      "torch.float32"
+    ],
+    "checkpoint_bytes": 5033557096,
+    "parameter_count": 2516756480,
+    "origin": "local_reference_from_official_weights_not_official_benchmark",
+    "device": "cuda",
+    "cuda_matmul_tf32": false,
+    "torch_version": "2.0.0+cu118"
+  },
+  "quality_assessment": {
+    "status": "measured_difference_not_automatically_accepted",
+    "error_attribution": "unverified_without_matched_sdk_float_and_w4a16_software_comparison"
+  },
+  "performance": {
+    "prefill_tokens_per_second": 284.55106562411197,
+    "decode_tokens_per_second": 6.647213026116098,
+    "scope": "fixed_128_input_max_128_generated_performance",
     "input_tokens": 128,
     "generated_tokens": 128,
-    "scope": "fixed_128_input_max_128_generated"
+    "peak_process_rss_mib": 1254.62109375,
+    "memory_scope": "本次生成、定长测速和精度评价各进程峰值的最大值",
+    "timing_scope": "常驻 Python 生成流程的 Prefill/Decode 阶段,含各阶段输入和 KV 处理",
+    "prefill_npu_ms": 444.8530771769583,
+    "decode_npu_ms": 16022.118223365396,
+    "decode_calls": 127,
+    "generation_elapsed_seconds": 19.573243079241365,
+    "unavailable_metrics": [],
+    "unavailable_checks": [],
+    "warmup_runs": 1,
+    "measured_runs": 1,
+    "functional_failures": []
   },
-  "model_size": {
-    "unit": "MB",
-    "compiled_dla": 2292.52,
-    "auxiliary_weights": 534.77,
-    "files": [
-      {
-        "file": "1024c/decode.dla",
-        "size_mb": 1144.88,
-        "role": "compiled_dla"
-      },
-      {
-        "file": "1024c/prompt.dla",
-        "size_mb": 1147.64,
-        "role": "compiled_dla"
-      },
-      {
-        "file": "tokenizer/embedding_int16.bin",
-        "size_mb": 534.77,
-        "role": "auxiliary_weights"
-      }
-    ],
-    "scope": "light_hessian_v8_verified_two_dla_files",
-    "directory": "<board_root>/open_models/minicpm5_w4_light_hessian_v8_native",
-    "source_weights": 5033.56,
-    "deployment_total": 2827.29
+  "precision": "asym4W_sym16A",
+  "runtime": {
+    "backend": "python_neuron_runtime_hw",
+    "machine": "aarch64",
+    "kernel": "6.6.137-mtk+ga246e0c68c39-g429091ed5965"
   },
-  "weight_optimization": "hessian_16_samples",
-  "cumulative_layer_error": false,
-  "functional_checks": {
-    "scope": "four_authored_functional_cases_not_benchmark",
-    "cases": 4,
-    "answers_present": 4,
-    "eos_reached": 4,
-    "text_token_parity": 4,
-    "exact_token_match_fp32": 3,
-    "strict_answer_only_format_passed": 3
+  "model_files": [
+    {
+      "file": "models/1024c/MiniCPM5-2B_asym4W_sym16A_42layer_prefill_128t_1024c.dla",
+      "bytes": 1147638607
+    },
+    {
+      "file": "models/1024c/MiniCPM5-2B_asym4W_sym16A_42layer_decode_1t_1024c.dla",
+      "bytes": 1144879987
+    },
+    {
+      "file": "models/tokenizer/embedding_int16.bin",
+      "bytes": 534773760
+    }
+  ],
+  "wikitext": {
+    "blocks": 2250,
+    "scored_tokens": 285750,
+    "protocol": "full_test_block128_v1",
+    "fp32_ppl": 37.62604522705078,
+    "npu_ppl": 45.102988726717776,
+    "difference": 7.476943499666994,
+    "difference_percent": 19.87172304330176
   },
-  "error_diagnosis": {
-    "date": "2026-10-16",
-    "confirmed": [
-      "late_layer_mlp_int4_approximation_loss",
-      "rare_a16_activation_clipping"
-    ],
-    "global_range_guard_adopted": false,
-    "current_delivery_replaced": false,
-    "main_quality_gap_resolved": false,
-    "optimization_limit_proven": false
-  },
-  "memory_summary": {
-    "peak_process_rss_mib": 1152.421875,
-    "scope": "native_cli_fixed_128_input_max_128_generated"
-  },
-  "record_origin": "重构前已归档的固定子集评价,指标未重新测量,不是全量结果.",
-  "metrics_scope": "迁移前 C++/原生 CLI 的历史记录,当前 Python 推理尚未验证",
-  "target_backend": "python_neuron_runtime_hw"
+  "samples": 1000,
+  "sample_unit": "question",
+  "sample_ids_sha256": "42935dbd81c2a2ca0bdadade816cbb63f78d4d7616f0a8d49a05cba37dc85091"
 }

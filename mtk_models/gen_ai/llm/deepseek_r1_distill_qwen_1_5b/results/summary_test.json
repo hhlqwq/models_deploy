@@ -1,0 +1,51 @@
+{
+  "model": "deepseek_r1_distill_qwen_1_5b",
+  "evaluation_scope": "subset",
+  "status": "complete",
+  "samples": 100,
+  "accuracy": {
+    "MMLU Accuracy": {
+      "fp32_accuracy": 0.34,
+      "npu_accuracy": 0.35,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": -0.9999999999999953
+    }
+  },
+  "sample_unit": "question",
+  "sampling": "fixed_task_subset_v2",
+  "sample_ids_sha256": "cc0a9686a93977f72759b8004bb7ef78cf0a2031f75eb2aed4997d496ac9c7e8",
+  "dla_artifacts": {
+    "1024c/DeepSeek-R1-Distill-Qwen-1.5B_asym4W_sym16A_28layer_prefill_128t_1024c.dla": "6042a4df24bbe388dbcc43e93829c1527d75da429e3459e41f1ad683487ccac9",
+    "1024c/DeepSeek-R1-Distill-Qwen-1.5B_asym4W_sym16A_28layer_decode_1t_1024c.dla": "6d4425bff17ea9e43c1e5c527d3b99b8e280d4c94635481de5d0dfe8891ff650"
+  },
+  "loss_definition": "正值表示 NPU 相对浮点精度下降,负值表示改善",
+  "cases_sha256": "b28fc6aeadae04815464dd6e481ce1510dad9076a481d0edb69bb0e0dd062247",
+  "wikitext": {
+    "scored_tokens": 2032,
+    "fp32_perplexity": 106.65990447998047,
+    "npu_perplexity": 127.64158051064337,
+    "perplexity_increase": 20.981676030662896,
+    "perplexity_increase_percent": 19.67156836766253
+  },
+  "run_id": "20261030_091702_1750935",
+  "output_errors": {
+    "scope": "demo_first_prefill_valid_positions; excludes_decode",
+    "compared_calls": 2,
+    "comparison_basis": "deployment_output_including_preprocessing",
+    "sample_ids": [
+      "zh_demo:prefill:0",
+      "en_demo:prefill:0"
+    ],
+    "nrmse_definition": "100 * RMSE / RMS(reference)",
+    "outputs": {
+      "output": {
+        "cosine_similarity": 0.9237970645817772,
+        "rmse": 1.2225306109569325,
+        "nrmse_percent": 42.61863876570738,
+        "elements": 3646464,
+        "calls": 2,
+        "unavailable": []
+      }
+    }
+  }
+}

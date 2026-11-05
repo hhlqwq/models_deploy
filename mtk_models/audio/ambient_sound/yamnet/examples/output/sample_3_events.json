@@ -4,23 +4,23 @@
   "top5_yamnet": [
     {
       "class": "Siren",
-      "score": 0.2581707239151001
+      "score": 0.2609405517578125
     },
     {
       "class": "Opera",
-      "score": 0.23900264501571655
+      "score": 0.24466706812381744
     },
     {
       "class": "Alarm",
-      "score": 0.23404023051261902
+      "score": 0.23340147733688354
     },
     {
       "class": "Classical music",
-      "score": 0.18893855810165405
+      "score": 0.19242551922798157
     },
     {
       "class": "Emergency vehicle",
-      "score": 0.18115384876728058
+      "score": 0.18170318007469177
     }
   ]
 }

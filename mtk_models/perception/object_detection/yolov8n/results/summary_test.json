@@ -1,0 +1,85 @@
+{
+  "model": "yolov8n",
+  "evaluation_scope": "subset",
+  "status": "complete",
+  "samples": 300,
+  "accuracy": {
+    "mAP@0.5:0.95": {
+      "fp32_accuracy": 0.3709836916861663,
+      "npu_accuracy": 0.3628772359991841,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 0.8106455686982206
+    }
+  },
+  "sample_unit": "image",
+  "sampling": "fixed_task_subset_v2",
+  "sample_ids_sha256": "38827765067770e9430cd291c4bf5e6346b54949ea8c49ecf91a143d1d067f0d",
+  "dla_artifacts": {
+    "model_int8.dla": "bc06d4cb7e7545eebbe5bfce18f1bd3c98c1147abbceed6e5abda44b4530ff8d"
+  },
+  "loss_definition": "正值表示 NPU 相对浮点精度下降,负值表示改善",
+  "run_id": "20261030_080314_1720112",
+  "output_errors": {
+    "scope": "compile_fixed_subset",
+    "compared_calls": 5,
+    "comparison_basis": "deployment_output_including_preprocessing",
+    "sample_ids": [
+      "000000000139.jpg",
+      "000000000285.jpg",
+      "000000000632.jpg",
+      "000000000785.jpg",
+      "000000001761.jpg"
+    ],
+    "nrmse_definition": "100 * RMSE / RMS(reference)",
+    "outputs": {
+      "box_8": {
+        "cosine_similarity": 0.9934926692348582,
+        "rmse": 0.29515511813970285,
+        "nrmse_percent": 11.526286776846227,
+        "elements": 2048000,
+        "calls": 5,
+        "unavailable": []
+      },
+      "score_8": {
+        "cosine_similarity": 0.999741871922683,
+        "rmse": 0.3801067557050378,
+        "nrmse_percent": 2.333985303352439,
+        "elements": 2560000,
+        "calls": 5,
+        "unavailable": []
+      },
+      "box_16": {
+        "cosine_similarity": 0.9918021498825521,
+        "rmse": 0.3135031509181098,
+        "nrmse_percent": 12.802992931319954,
+        "elements": 512000,
+        "calls": 5,
+        "unavailable": []
+      },
+      "score_16": {
+        "cosine_similarity": 0.9993090931870621,
+        "rmse": 0.5714183622112075,
+        "nrmse_percent": 3.7993049935408814,
+        "elements": 640000,
+        "calls": 5,
+        "unavailable": []
+      },
+      "box_32": {
+        "cosine_similarity": 0.9885062905393743,
+        "rmse": 0.3852894192237576,
+        "nrmse_percent": 15.131482436569218,
+        "elements": 128000,
+        "calls": 5,
+        "unavailable": []
+      },
+      "score_32": {
+        "cosine_similarity": 0.9993494330483559,
+        "rmse": 0.5043930382771786,
+        "nrmse_percent": 3.6089259185251534,
+        "elements": 160000,
+        "calls": 5,
+        "unavailable": []
+      }
+    }
+  }
+}

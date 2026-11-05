@@ -1,0 +1,45 @@
+{
+  "model": "vit_base_patch16_224",
+  "evaluation_scope": "subset",
+  "status": "complete",
+  "samples": 1000,
+  "accuracy": {
+    "Top-1": {
+      "fp32_accuracy": 0.823,
+      "npu_accuracy": 0.798,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 2.499999999999991
+    }
+  },
+  "sample_unit": "image",
+  "sampling": "fixed_task_subset_v2",
+  "sample_ids_sha256": "06781fed0d8e3acea690a199b42ec027bbcbf77e31537ffaa11d7c7a1da0d3d1",
+  "dla_artifacts": {
+    "model_int8.dla": "d2f278c2829047390c19ccc644c05631ec4402a529ed940604ae455ad086f738"
+  },
+  "loss_definition": "正值表示 NPU 相对浮点精度下降,负值表示改善",
+  "run_id": "20261030_080127_1719436",
+  "output_errors": {
+    "scope": "compile_fixed_subset",
+    "compared_calls": 5,
+    "comparison_basis": "deployment_output_including_preprocessing",
+    "sample_ids": [
+      "ILSVRC2012_val_00000001.JPEG",
+      "ILSVRC2012_val_00000002.JPEG",
+      "ILSVRC2012_val_00000003.JPEG",
+      "ILSVRC2012_val_00000004.JPEG",
+      "ILSVRC2012_val_00000005.JPEG"
+    ],
+    "nrmse_definition": "100 * RMSE / RMS(reference)",
+    "outputs": {
+      "output": {
+        "cosine_similarity": 0.8787228694089404,
+        "rmse": 0.34215343790907743,
+        "nrmse_percent": 54.32837684720523,
+        "elements": 5000,
+        "calls": 5,
+        "unavailable": []
+      }
+    }
+  }
+}

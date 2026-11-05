@@ -1,0 +1,45 @@
+{
+  "model": "depth_anything_v2_small",
+  "evaluation_scope": "subset",
+  "status": "complete",
+  "samples": 195,
+  "accuracy": {
+    "DA-2K 点对准确率": {
+      "fp32_accuracy": 0.9282051282051282,
+      "npu_accuracy": 0.8051282051282052,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 12.307692307692308
+    }
+  },
+  "sample_unit": "annotated_point_pair",
+  "sampling": "fixed_task_subset_v2",
+  "sample_ids_sha256": "81d49c5d05ddd952c7d787cb656a814ac4a00963dfec19495b2a64c05df898bd",
+  "dla_artifacts": {
+    "model_int8.dla": "fa1e3bb1c8fac5923b1f6ffb5c4e2d8fa5e2b0cbeacb16be2520d283e401370b"
+  },
+  "loss_definition": "正值表示 NPU 相对浮点精度下降,负值表示改善",
+  "run_id": "20261030_080608_1721215",
+  "output_errors": {
+    "scope": "compile_fixed_subset",
+    "compared_calls": 5,
+    "comparison_basis": "deployment_output_including_preprocessing",
+    "sample_ids": [
+      "images/adverse_style/10565642806_6362d17cf0_k.jpg",
+      "images/adverse_style/15997982357_18fb4a2306_k.jpg",
+      "images/adverse_style/23996470080_0f099b1dc5_k.jpg",
+      "images/adverse_style/25665624620_97c2ecb242_k.jpg",
+      "images/adverse_style/28544360337_39ce7de5cd_h.jpg"
+    ],
+    "nrmse_definition": "100 * RMSE / RMS(reference)",
+    "outputs": {
+      "output": {
+        "cosine_similarity": 0.9650852564033606,
+        "rmse": 1.0695090250684218,
+        "nrmse_percent": 37.39551866273453,
+        "elements": 1341620,
+        "calls": 5,
+        "unavailable": []
+      }
+    }
+  }
+}

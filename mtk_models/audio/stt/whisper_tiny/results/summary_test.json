@@ -1,0 +1,46 @@
+{
+  "model": "whisper_tiny",
+  "evaluation_scope": "subset",
+  "status": "complete",
+  "samples": 50,
+  "accuracy": {
+    "WER": {
+      "fp32_accuracy": 0.06625258799171843,
+      "npu_accuracy": 0.061076604554865424,
+      "higher_is_better": false,
+      "accuracy_loss_percentage_points": -0.5175983436853007
+    }
+  },
+  "sample_unit": "utterance",
+  "sampling": "fixed_task_subset_v2",
+  "sample_ids_sha256": "b6e6f7924c0609df14464fd00c9aa500bb911c585305b510ed7c2e6f94995259",
+  "dla_artifacts": {
+    "tiny_encoder_w8a16.dla": "3bfe14d56940e567e53b560bcafada64a6b2945a0afe054d91acc6d94eb8ac62",
+    "tiny_decoder_w8a16_1t256c.dla": "5487c7a8b9247b311c4a2a7677ba30be94ee8901e25f0efffc34e32bccc95ca8"
+  },
+  "loss_definition": "正值表示 NPU 相对浮点精度下降,负值表示改善",
+  "run_id": "20261030_080700_1724563",
+  "output_errors": {
+    "scope": "encoder_output_compile_subset; excludes_autoregressive_decoder",
+    "compared_calls": 5,
+    "comparison_basis": "deployment_output_including_preprocessing",
+    "sample_ids": [
+      "1089-134686-0000:encoder",
+      "1089-134686-0001:encoder",
+      "1089-134691-0017:encoder",
+      "1188-133604-0000:encoder",
+      "121-121726-0001:encoder"
+    ],
+    "nrmse_definition": "100 * RMSE / RMS(reference)",
+    "outputs": {
+      "output": {
+        "cosine_similarity": 0.9989004639197974,
+        "rmse": 0.06105162320807798,
+        "nrmse_percent": 4.693918228465345,
+        "elements": 2880000,
+        "calls": 5,
+        "unavailable": []
+      }
+    }
+  }
+}

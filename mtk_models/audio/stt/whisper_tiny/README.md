@@ -1,14 +1,12 @@
 # Whisper-Tiny
 
-> 当前 W8A16 已修复归一化量化失真,完成双 DLA 编译、板端示例及 50 条非校准音频对照.本次 NPU WER 为 5.52%,同协议 ONNX 为 5.81%;尚未完成当前版本的全量评价.下文历史浮点/C++ 指标不能作为当前 W8A16 的成绩.
-
 多语言语音识别。输入为 16 kHz 单声道音频，板端运行 Encoder 和 Decoder 两个 DLA。模型来源见[模型卡](model_card.md)。
 
 当前交付为 W8A16: 主计算权重 INT8、激活和原生 I/O 为对称 INT16.2026-10-27 已完成修复后的编译和小样本实测,历史浮点模型指标不代表当前实现.
 
 当前 Converter 不直接量化 LayerNorm.导出时保留官方参数和 epsilon,先对每行中心化并除以该行绝对值最大值(下限为 1),再计算平方、均值和 RSQRT;epsilon 同时除以缩放值的平方,保持浮点数学等价.这避免少数大幅值行占满整个 INT16 平方张量的量程,使其他行的小方差舍入为零.22 个 LayerNorm 的等价检查覆盖普通、小方差、常量和大幅值输入;两个 TFLite 均通过严格审计,仅有 INT8、INT16、INT32 张量,Encoder/Decoder 分别核实 26/43 个 W8A16 仿射层.注意力 BatchMatMul 的第二输入要求对称 INT16,因此启用 `use_symmetric_quantization`,不使用非对称 INT16 或 CPU 桥接.
 
-### 2026-10-27 小样本精度诊断
+### 归一化修复的小样本诊断
 
 正式 `deploy/compile.sh` 已完成修复后的双 DLA 编译及上传,板端 `compile.sh` 已完成 5 条通路检查和示例生成.随后单独在 LibriSpeech test-clean 固定选择 50 条音频,排除全部 8 条校准音频,用相同预处理、滑动 Cache 和文本规范化对照 ONNX/NPU:
 
@@ -21,7 +19,7 @@
 
 WER 越低越好.本次参考文本共 1032 个词,NPU 共 57 个编辑错误(替换 41、删除 6、插入 10).小样本略优于浮点不代表全量会改善.修复前同批音频的 NPU WER 为 182.27%;逐层定位发现 Encoder 第四个注意力块的归一化首次发生严重误差,SDK 量化图软件执行同样复现.改为逐行缩放后,同一条非校准音频的真实 NPU Encoder 输出余弦从约 -0.0609 提高到 0.99883,NRMSE 从约 170.30% 降到 4.84%.
 
-修复后的诊断预测、脚本和 `comparison.json` 保存在日期临时目录的 `whisper_w8a16_fixed50/`,未将此子集结果混入历史全量报告.本次已消除该小样本上的严重退化,未完成 2620 条全量精度、正式性能和 RSS 评价.
+修复后的诊断预测、脚本和 `comparison.json` 保存在日期临时目录的 `whisper_w8a16_fixed50/`,未将此子集结果混入历史全量报告.正式精度、性能和 RSS 见下文 G720 实测结果。
 
 部署配置固定为 `cacheSize: 256`、`maxTokenLength: 448`.Decoder 每步输入 1 Token,使用 448 个绝对位置,Cache 满后左移并保留最近 256 个 Token.这是滑动窗口解码,不是保存 448 Token 完整历史的注意力;ONNX 参考、量化校准和板端使用同一实现.448 为提示词与生成文本的总 Token 上限,达到上限时记录停止原因,不宣称已遇到 EOT.
 
@@ -72,21 +70,28 @@ bash evaluate.sh
 Docker 需要 ONNX Runtime、NumPy、OpenCV、tqdm、ffmpeg 和 OpenAI Whisper。Whisper 仅提供音频处理、分词及文本规范化,模型推理由 ONNX Runtime 执行。
 仓库 Docker 镜像包含 ffmpeg; 现有容器若缺少该依赖,需在容器中执行 `apt-get update && apt-get install -y --no-install-recommends ffmpeg`.脚本会在模型转换前检查该依赖.
 
-## 历史浮点/C++ 全量结果
+## G720 实测结果
 
-以下为历史浮点/C++ 版本的 LibriSpeech test-clean 全量 2620 条音频结果,见 [summary.json](results/summary.json),不能作为当前 W8A16 Python 版本的精度、性能或内存成绩.
+正式评价覆盖 LibriSpeech test-clean。主指标计分 2,620 条音频，运行编号 `20261103_090940_1944759`。[正式报告](results/summary.json)
 
-| 指标 | 结果 |
-| --- | ---: |
-| ONNX FP32 WER | **7.56%** |
-| 板端 WER | **7.56%** |
-| 精度变化 | **下降不足 0.01 个百分点** |
-| 板端 NPU 平均耗时 | **379.19 ms/条音频** |
-| 推理进程峰值 RSS | **105.53 MiB** |
+| 指标 | 浮点参考 | G720 | 损失 |
+| --- | ---: | ---: | ---: | ---: |
+| WER | 7.558% | 11.200% | +3.642 个百分点 |
 
-WER 越低越好,本次板端 WER 相比 ONNX 上升不足 0.01 个百分点。精度变化按 ONNX WER 减板端 WER 计算,完整数值保存在汇总文件中。
+板端性能为 NPU 平均 311.436 ms，P95 556.279 ms，Python 进程峰值 RSS 为 87.29 MiB。
+NPU 耗时为每条音频的 Encoder 与全部 Decoder 调用之和。校准音频与正式评价有重叠。
 
-耗时为每条音频的 Encoder 和全部自回归 Decoder NPU 调用之和,不包含前后处理,不等同于一次 Decoder 调用耗时。峰值 RSS 为双模型常驻推理进程的峰值,包含运行库及前后处理,不代表 NPU 专用内存。
+编译子集主指标计分 50 条音频，运行编号 `20261030_080700_1724563`。[子集报告](results/summary_test.json)
+
+| 指标 | 浮点参考 | G720 | 损失 |
+| --- | ---: | ---: | ---: | ---: |
+| WER | 6.625% | 6.108% | -0.518 个百分点 |
+
+损失为正表示退化。子集报告中的输出误差仅覆盖下表所列调用。
+
+| 输出 | 调用次数 | CosSim | RMSE | NRMSE |
+| --- | ---: | ---: | ---: | ---: |
+| `output` | 5 | 0.998900 | 0.0610516 | 4.694% |
 
 ## 效果示例
 

@@ -1,14 +1,14 @@
 {
   "status": "complete",
   "model": "resnet101",
-  "run_id": "20261023_041137_1275282",
+  "run_id": "20261103_062449_1916342",
   "dataset": "imagenet_val2012",
   "samples": 50000,
   "metric": "Top-1",
   "board_accuracy": 0.81544,
-  "npu_mean_ms": 5.15670322930906,
+  "npu_mean_ms": 5.10909539363347,
   "timing_scope": "常驻模型,50000 张图片的 NeuronRuntime_inference 调用,预热 5 次",
-  "peak_rss_mib": 243.7421875,
+  "peak_rss_mib": 244.15625,
   "memory_scope": "Python 推理进程峰值 RSS",
   "reference_accuracy": 0.81898,
   "accuracy_change_percentage_points": -0.354,
@@ -22,13 +22,40 @@
   "precision": "W8A8",
   "calibration_samples": 100,
   "calibration_overlap_samples": 100,
-  "npu_p95_ms": 5.307537969201803,
-  "end_to_end_mean_ms": 22.66626543909777,
+  "npu_p95_ms": 5.24253910407424,
+  "end_to_end_mean_ms": 21.452848198981954,
   "end_to_end_timing_scope": "图片读取至类别排序,不含模型加载及预测写盘",
   "target_backend": "python_neuron_runtime_hw",
   "runtime": {
     "machine": "aarch64",
     "kernel": "6.6.137-mtk+ga246e0c68c39-g429091ed5965"
   },
-  "unavailable_metrics": []
+  "unavailable_metrics": [],
+  "evaluation": {
+    "model": "resnet101",
+    "backend": "npu",
+    "scope": "full",
+    "samples": {
+      "count": 50000,
+      "unit": "image",
+      "selection_id": "975b64c2bc10cbfe9f65c1b3f08591ac47ccf89cadf578e37a2e06f05ee3d3e0"
+    },
+    "metrics": {
+      "Top-1": {
+        "value": 0.81544,
+        "unit": "ratio",
+        "higher_is_better": true
+      }
+    }
+  },
+  "accuracy": {
+    "Top-1": {
+      "fp32_accuracy": 0.81898,
+      "npu_accuracy": 0.81544,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 0.35399999999999876
+    }
+  },
+  "sample_unit": "image",
+  "sample_ids_sha256": "975b64c2bc10cbfe9f65c1b3f08591ac47ccf89cadf578e37a2e06f05ee3d3e0"
 }

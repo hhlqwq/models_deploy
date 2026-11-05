@@ -1,0 +1,53 @@
+{
+  "model": "rtmpose_body2d",
+  "evaluation_scope": "subset",
+  "status": "complete",
+  "samples": 527,
+  "accuracy": {
+    "WholeBody AP": {
+      "fp32_accuracy": 0.5400359311124037,
+      "npu_accuracy": 0.5005528185076097,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 3.948311260479398
+    }
+  },
+  "sample_unit": "person_instance",
+  "sampling": "fixed_task_subset_v2",
+  "sample_ids_sha256": "e80c2412213261f57dda90d1e081af9e904850b837f1291c2f63bd71cde1ca1d",
+  "dla_artifacts": {
+    "model_int8.dla": "2600958b87e49da34110905a50cac25ac48509e3ea6c898f1f1a5eaf8c28c967"
+  },
+  "loss_definition": "正值表示 NPU 相对浮点精度下降,负值表示改善",
+  "run_id": "20261030_080341_1720309",
+  "output_errors": {
+    "scope": "compile_fixed_subset",
+    "compared_calls": 5,
+    "comparison_basis": "deployment_output_including_preprocessing",
+    "sample_ids": [
+      "139:detection:2106",
+      "139:detection:2107",
+      "139:detection:2108",
+      "139:detection:2109",
+      "139:detection:2110"
+    ],
+    "nrmse_definition": "100 * RMSE / RMS(reference)",
+    "outputs": {
+      "pred_x": {
+        "cosine_similarity": 0.9802353647197241,
+        "rmse": 0.04800140136081047,
+        "nrmse_percent": 20.113806969639377,
+        "elements": 255360,
+        "calls": 5,
+        "unavailable": []
+      },
+      "pred_y": {
+        "cosine_similarity": 0.9798963267340695,
+        "rmse": 0.04660100001991995,
+        "nrmse_percent": 20.492889292485263,
+        "elements": 340480,
+        "calls": 5,
+        "unavailable": []
+      }
+    }
+  }
+}

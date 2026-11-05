@@ -1,0 +1,45 @@
+{
+  "model": "yamnet",
+  "evaluation_scope": "subset",
+  "status": "complete",
+  "samples": 188,
+  "accuracy": {
+    "ESC-50 macro AP (folds 2-5)": {
+      "fp32_accuracy": 0.7492843608466767,
+      "npu_accuracy": 0.7475647508788388,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 0.17196099678379317
+    }
+  },
+  "sample_unit": "audio_clip",
+  "sampling": "fixed_task_subset_v2",
+  "sample_ids_sha256": "18f1b4f3824f793b37fd16271f284d1e99b7984c2afe295243b54d27ed3b8364",
+  "dla_artifacts": {
+    "model_w8a16.dla": "7f4f8fc4a1d97ca2719c7b27ea260ebc2085419200266c6766de2926cb5c992c"
+  },
+  "loss_definition": "正值表示 NPU 相对浮点精度下降,负值表示改善",
+  "run_id": "20261030_080634_1721403",
+  "output_errors": {
+    "scope": "compile_fixed_subset",
+    "compared_calls": 5,
+    "comparison_basis": "deployment_output_including_preprocessing",
+    "sample_ids": [
+      "1-100032-A-0.wav:window:0",
+      "1-100032-A-0.wav:window:1",
+      "1-100032-A-0.wav:window:2",
+      "1-100032-A-0.wav:window:3",
+      "1-100032-A-0.wav:window:4"
+    ],
+    "nrmse_definition": "100 * RMSE / RMS(reference)",
+    "outputs": {
+      "output": {
+        "cosine_similarity": 0.99716667066347,
+        "rmse": 0.0036852523502046842,
+        "nrmse_percent": 7.940449701927744,
+        "elements": 2605,
+        "calls": 5,
+        "unavailable": []
+      }
+    }
+  }
+}

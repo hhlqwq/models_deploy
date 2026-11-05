@@ -1,39 +1,61 @@
 {
-  "status": "python_pending_board_validation",
+  "schema_version": 1,
   "model": "fastsam",
-  "run_id": "20261009_030224_283777",
+  "run_id": "20261103_082451_1918740",
+  "status": "complete",
+  "evaluation_scope": "full",
+  "evaluation": {
+    "model": "fastsam",
+    "backend": "npu",
+    "scope": "full",
+    "samples": {
+      "count": 5000,
+      "unit": "image",
+      "selection_id": "fceb5cb3ce42ec20794c87fa9f6ed87f668fe14727ab8550bfe73904085f63c5"
+    },
+    "metrics": {
+      "segm AR@100": {
+        "value": 0.37570111462776934,
+        "unit": "ratio",
+        "higher_is_better": true
+      }
+    }
+  },
   "dataset": "coco_val2017_instances",
   "samples": 5000,
   "metric": "segm AR@100",
-  "board_accuracy": 0.37566533645245637,
-  "npu_mean_ms": 14.7245105766,
-  "timing_scope": "逐图加载模型,单独统计 NeuronRuntime_inference 调用",
-  "peak_rss_mib": 64.5546875,
-  "memory_scope": "推理进程峰值 RSS",
-  "reference_accuracy": 0.39017201045823585,
-  "accuracy_loss_percentage_points": 1.4506674005779485,
-  "accuracy_change_percentage_points": -1.4506674005779485,
-  "reference_source": "本次 ONNX 浮点全量实测,使用与板端相同的评测协议",
-  "model_size": {
-    "unit": "MB",
-    "source_weights": null,
-    "fp32_onnx": null,
-    "quantized_tflite": null,
-    "compiled_dla": 12.29,
-    "auxiliary_weights": null,
-    "deployment_total": 12.29,
-    "files": [
-      {
-        "file": "model_int8.dla",
-        "size_mb": 12.29,
-        "role": "compiled_dla"
-      }
-    ],
-    "source": "board_file_stat",
-    "directory": "<board_root>/open_models/fastsam/models",
-    "collected_on": "2026-10-12",
-    "scope": "current_deployment_files_not_reverified_original_run"
+  "board_accuracy": 0.37570111462776934,
+  "reference_accuracy": 0.39010045410760974,
+  "reference_source": "本次同模型同协议浮点全量实测",
+  "accuracy_change_percentage_points": -1.43993394798404,
+  "comparison_status": "matched_reference",
+  "performance": {
+    "npu_mean_ms": 14.537306246720254,
+    "npu_p95_ms": 14.592084754258394,
+    "scope": "persistent Python Runtime; NPU inference call reported separately",
+    "peak_process_rss_mib": 177.03515625,
+    "memory_scope": "推理进程峰值 RSS,不等于设备总内存或驱动专用内存",
+    "end_to_end_mean_ms": 405.4012254311703
   },
-  "metrics_scope": "迁移前 C++/原生 CLI 的历史记录,当前 Python 推理尚未验证",
-  "target_backend": "python_neuron_runtime_hw"
+  "runtime": {
+    "backend": "python_neuron_runtime_hw",
+    "machine": "aarch64",
+    "kernel": "6.6.137-mtk+ga246e0c68c39-g429091ed5965"
+  },
+  "model_files": [
+    {
+      "file": "model_int8.dla",
+      "bytes": 12287205
+    }
+  ],
+  "accuracy": {
+    "segm AR@100": {
+      "fp32_accuracy": 0.39010045410760974,
+      "npu_accuracy": 0.37570111462776934,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 1.43993394798404
+    }
+  },
+  "sample_unit": "image",
+  "sample_ids_sha256": "fceb5cb3ce42ec20794c87fa9f6ed87f668fe14727ab8550bfe73904085f63c5"
 }

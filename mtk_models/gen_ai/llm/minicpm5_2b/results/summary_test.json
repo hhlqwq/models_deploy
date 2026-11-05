@@ -1,0 +1,50 @@
+{
+  "model": "minicpm5_2b",
+  "evaluation_scope": "subset",
+  "status": "complete",
+  "samples": 100,
+  "accuracy": {
+    "MMLU Accuracy": {
+      "fp32_accuracy": 0.53,
+      "npu_accuracy": 0.34,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 19.0
+    }
+  },
+  "sample_unit": "question",
+  "sampling": "fixed_task_subset_v2",
+  "sample_ids_sha256": "cc0a9686a93977f72759b8004bb7ef78cf0a2031f75eb2aed4997d496ac9c7e8",
+  "dla_artifacts": {
+    "1024c/MiniCPM5-2B_asym4W_sym16A_42layer_prefill_128t_1024c.dla": "e14876fe75d303ce11fbfbe372e80460221cf0abc693efc468e9c3adfe63f634",
+    "1024c/MiniCPM5-2B_asym4W_sym16A_42layer_decode_1t_1024c.dla": "d83a62b8d762253ac9d7ab3f50178db8a31a4478aaa1dd1d3a0147dea5f8fa40"
+  },
+  "loss_definition": "正值表示 NPU 相对浮点精度下降,负值表示改善",
+  "cases_sha256": "8d044f85bcb1dc6ebb7f0db49e94c497df52c5b037d129e33cb4785c35fe0d5f",
+  "wikitext": {
+    "scored_tokens": 2032,
+    "fp32_perplexity": 37.93550109863281,
+    "npu_perplexity": 46.54587860233396,
+    "perplexity_increase": 8.610377503701145,
+    "perplexity_increase_percent": 22.697413384138642
+  },
+  "run_id": "20261030_091512_1750273",
+  "output_errors": {
+    "scope": "demo_first_prefill_valid_positions; excludes_decode",
+    "compared_calls": 1,
+    "comparison_basis": "deployment_output_including_preprocessing",
+    "sample_ids": [
+      "en_demo:prefill:0"
+    ],
+    "nrmse_definition": "100 * RMSE / RMS(reference)",
+    "outputs": {
+      "output": {
+        "cosine_similarity": 0.7097801044338607,
+        "rmse": 2.266386115054016,
+        "nrmse_percent": 76.36935101369164,
+        "elements": 2611200,
+        "calls": 1,
+        "unavailable": []
+      }
+    }
+  }
+}

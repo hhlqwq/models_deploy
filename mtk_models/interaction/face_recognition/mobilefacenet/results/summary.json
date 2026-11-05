@@ -1,39 +1,60 @@
 {
-  "status": "python_pending_board_validation",
+  "schema_version": 1,
   "model": "mobilefacenet",
-  "run_id": "20261009_081612_477525",
+  "run_id": "20261103_080107_1918280",
+  "status": "complete",
+  "evaluation_scope": "full",
+  "evaluation": {
+    "model": "mobilefacenet",
+    "backend": "npu",
+    "scope": "full",
+    "samples": {
+      "count": 6000,
+      "unit": "face_pair",
+      "selection_id": "dfbdb688560dc3b0b981b126e09b9195a7a990af68d117fcf1857b12bfaf079b"
+    },
+    "metrics": {
+      "LFW 验证准确率": {
+        "value": 0.9931666666666666,
+        "unit": "ratio",
+        "higher_is_better": true
+      }
+    }
+  },
   "dataset": "LFW_upstream_MTCNN_5_point_aligned",
   "samples": 6000,
   "metric": "LFW 验证准确率",
   "board_accuracy": 0.9931666666666666,
-  "npu_mean_ms": 0.515436,
-  "timing_scope": "独立 C++ 常驻模型,预热 10 次后重复同一输入 100 次",
-  "peak_rss_mib": 8.25,
-  "memory_scope": "独立 C++ 常驻推理进程峰值 RSS",
   "reference_accuracy": 0.9938333333333333,
-  "accuracy_loss_percentage_points": 0.06666666666667043,
+  "reference_source": "本次同模型同协议浮点全量实测",
   "accuracy_change_percentage_points": -0.06666666666667043,
-  "reference_source": "本次 ONNX 浮点全量实测,使用与板端相同的评测协议",
-  "model_size": {
-    "unit": "MB",
-    "source_weights": null,
-    "fp32_onnx": null,
-    "quantized_tflite": null,
-    "compiled_dla": 1.41,
-    "auxiliary_weights": null,
-    "deployment_total": 1.41,
-    "files": [
-      {
-        "file": "model_int8.dla",
-        "size_mb": 1.41,
-        "role": "compiled_dla"
-      }
-    ],
-    "source": "board_file_stat",
-    "directory": "<board_root>/open_models/mobilefacenet/models",
-    "collected_on": "2026-10-12",
-    "scope": "current_deployment_files_not_reverified_original_run"
+  "comparison_status": "matched_reference",
+  "performance": {
+    "npu_mean_ms": 0.6309259839384003,
+    "npu_p95_ms": 0.7115378975868225,
+    "scope": "常驻 Python 模型,单独统计 NeuronRuntime_inference 调用",
+    "peak_process_rss_mib": 67.55078125,
+    "memory_scope": "推理进程峰值 RSS,不等于设备总内存或驱动专用内存"
   },
-  "metrics_scope": "迁移前 C++/原生 CLI 的历史记录,当前 Python 推理尚未验证",
-  "target_backend": "python_neuron_runtime_hw"
+  "runtime": {
+    "backend": "python_neuron_runtime_hw",
+    "machine": "aarch64",
+    "kernel": "6.6.137-mtk+ga246e0c68c39-g429091ed5965"
+  },
+  "model_files": [
+    {
+      "file": "model_int8.dla",
+      "bytes": 1409896
+    }
+  ],
+  "accuracy": {
+    "LFW 验证准确率": {
+      "fp32_accuracy": 0.9938333333333333,
+      "npu_accuracy": 0.9931666666666666,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 0.06666666666667043
+    }
+  },
+  "sample_unit": "face_pair",
+  "sample_ids_sha256": "dfbdb688560dc3b0b981b126e09b9195a7a990af68d117fcf1857b12bfaf079b"
 }

@@ -36,4 +36,4 @@
 
 `evaluate.sh` 的正式范围为 MMLU 固定 1000 题、57 学科、seed=17,以及完整 WikiText2 raw test.这里的全量指完整执行该约定范围,不是全部 14042 题 MMLU.MMLU 使用无聊天模板的 0-shot 单 Token 选项评分;输入超出部署上下文时停止,不截题或丢题.板端正式结果包含精度、损失、性能与推理进程峰值 RSS,发布为 `results/summary.json`.
 
-当前配方的固定 16 题诊断为 NPU 8/16、同题浮点 13/16,不能外推正式范围精度.现有 `summary.json` 保留迁移前历史记录,不代表当前 Python 链路的新实测.本模型卡补齐不产生新的精度、性能或内存结论.
+G720 已完成固定 1000 题 MMLU 与完整 WikiText2 test 的同协议浮点与 W4A16 对照。报告同时记录 128 Token 测速及进程峰值 RSS。[正式报告](results/summary.json)

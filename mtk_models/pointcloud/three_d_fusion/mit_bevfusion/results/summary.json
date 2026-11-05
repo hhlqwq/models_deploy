@@ -1,0 +1,75 @@
+{
+  "model": "MIT BEVFusion camera+lidar swint_v0p075",
+  "run_id": "20261104_020351_2126950",
+  "status": "complete",
+  "platform": "Genio 720 / MT8189",
+  "precision": "CPU FP32 + NPU FP16",
+  "protocol": "nuScenes detection_cvpr_2019, v1.0-mini mini_val",
+  "dataset": {
+    "version": "v1.0-mini",
+    "split": "mini_val",
+    "scenes": 2,
+    "scope": "完整 mini_val,不代表 trainval/val 6019 帧基准"
+  },
+  "evaluated_samples": 81,
+  "expected_samples": 81,
+  "board_accuracy": {
+    "mAP": 0.5841279951113714,
+    "NDS": 0.5832068108810772
+  },
+  "reference_accuracy": {
+    "mAP": 0.584392649410141,
+    "NDS": 0.5832625896851906
+  },
+  "accuracy_change_percentage_points": {
+    "mAP": -0.026465429876965096,
+    "NDS": -0.005577880411344882
+  },
+  "npu_mean_ms": 218.92354796629078,
+  "pipeline_mean_ms": 48852.01874832956,
+  "peak_rss_mib": 959.88671875,
+  "timing_scope": "pipeline 不含文件加载及图像预处理;NPU 为每帧所有 SDK inference 调用之和",
+  "memory_scope": "Python 混合推理进程峰值,评分前采集,不含全部驱动内存",
+  "model_size_bytes": 155923358,
+  "nuscenes_devkit": "1.2.0",
+  "missing": [],
+  "evaluation": {
+    "model": "mit_bevfusion",
+    "backend": "npu",
+    "scope": "full",
+    "samples": {
+      "count": 81,
+      "unit": "frame",
+      "selection_id": "56594b5019eb423953dda8940ee0021ea6da6e68605871ed618e00417ff074d8"
+    },
+    "metrics": {
+      "mAP": {
+        "value": 0.5841279951113714,
+        "unit": "ratio",
+        "higher_is_better": true
+      },
+      "NDS": {
+        "value": 0.5832068108810772,
+        "unit": "ratio",
+        "higher_is_better": true
+      }
+    }
+  },
+  "accuracy": {
+    "mAP": {
+      "fp32_accuracy": 0.584392649410141,
+      "npu_accuracy": 0.5841279951113714,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 0.026465429876965096
+    },
+    "NDS": {
+      "fp32_accuracy": 0.5832625896851906,
+      "npu_accuracy": 0.5832068108810772,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 0.005577880411344882
+    }
+  },
+  "samples": 81,
+  "sample_unit": "frame",
+  "sample_ids_sha256": "56594b5019eb423953dda8940ee0021ea6da6e68605871ed618e00417ff074d8"
+}

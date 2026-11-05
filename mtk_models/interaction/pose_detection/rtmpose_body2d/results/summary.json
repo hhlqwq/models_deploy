@@ -1,39 +1,62 @@
 {
-  "status": "python_pending_board_validation",
+  "schema_version": 1,
   "model": "rtmpose_body2d",
-  "run_id": "20261009_055704_406131",
-  "dataset": "coco_wholebody_val2017",
+  "run_id": "20261103_080139_1918290",
+  "status": "complete",
+  "evaluation_scope": "full",
+  "evaluation": {
+    "model": "rtmpose_body2d",
+    "backend": "npu",
+    "scope": "full",
+    "samples": {
+      "count": 104125,
+      "unit": "person_instance",
+      "selection_id": "58d0bbfca2ad9ab652be4b49626a5113f500435b9d4cc3b1ff5eaaf0f1cbda64"
+    },
+    "metrics": {
+      "WholeBody AP": {
+        "value": 0.5322141315320443,
+        "unit": "ratio",
+        "higher_is_better": true
+      }
+    }
+  },
+  "dataset": "见本模型评价协议",
   "samples": 104125,
   "metric": "WholeBody AP",
-  "board_accuracy": 0.5323935111690603,
-  "npu_mean_ms": 3.8621,
-  "timing_scope": "常驻模型,每个人体裁剪的 NeuronRuntime_inference 调用",
-  "peak_rss_mib": 32.7421875,
-  "memory_scope": "推理进程峰值 RSS",
-  "reference_accuracy": 0.5703546498137158,
-  "accuracy_loss_percentage_points": 3.7961138644655446,
-  "accuracy_change_percentage_points": -3.7961138644655446,
-  "reference_source": "本次 ONNX 浮点全量实测,使用与板端相同的评测协议",
-  "model_size": {
-    "unit": "MB",
-    "source_weights": null,
-    "fp32_onnx": null,
-    "quantized_tflite": null,
-    "compiled_dla": 19.14,
-    "auxiliary_weights": null,
-    "deployment_total": 19.14,
-    "files": [
-      {
-        "file": "model_int8.dla",
-        "size_mb": 19.14,
-        "role": "compiled_dla"
-      }
-    ],
-    "source": "board_file_stat",
-    "directory": "<board_root>/open_models/rtmpose_body2d/models",
-    "collected_on": "2026-10-12",
-    "scope": "current_deployment_files_not_reverified_original_run"
+  "board_accuracy": 0.5322141315320443,
+  "reference_accuracy": 0.5703661655685018,
+  "reference_source": "本次同模型同协议浮点全量实测",
+  "accuracy_change_percentage_points": -3.8152034036457505,
+  "comparison_status": "matched_reference",
+  "performance": {
+    "npu_mean_ms": 3.8921429980747484,
+    "npu_p95_ms": 4.051077086478472,
+    "scope": "每个人体裁剪的 NPU 调用",
+    "peak_process_rss_mib": 163.08203125,
+    "memory_scope": "推理进程峰值 RSS,不等于设备总内存或驱动专用内存",
+    "preprocess_mean_ms": 4.975257961703341,
+    "postprocess_mean_ms": 1.6325162772496207
   },
-  "metrics_scope": "迁移前 C++/原生 CLI 的历史记录,当前 Python 推理尚未验证",
-  "target_backend": "python_neuron_runtime_hw"
+  "runtime": {
+    "backend": "python_neuron_runtime_hw",
+    "machine": "aarch64",
+    "kernel": "6.6.137-mtk+ga246e0c68c39-g429091ed5965"
+  },
+  "model_files": [
+    {
+      "file": "model_int8.dla",
+      "bytes": 19144675
+    }
+  ],
+  "accuracy": {
+    "WholeBody AP": {
+      "fp32_accuracy": 0.5703661655685018,
+      "npu_accuracy": 0.5322141315320443,
+      "higher_is_better": true,
+      "accuracy_loss_percentage_points": 3.8152034036457505
+    }
+  },
+  "sample_unit": "person_instance",
+  "sample_ids_sha256": "58d0bbfca2ad9ab652be4b49626a5113f500435b9d4cc3b1ff5eaaf0f1cbda64"
 }

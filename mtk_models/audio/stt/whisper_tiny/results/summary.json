@@ -1,44 +1,69 @@
 {
-  "status": "python_pending_board_validation",
+  "schema_version": 1,
   "model": "whisper_tiny",
-  "run_id": "20261009_090948_590601",
+  "run_id": "20261103_090940_1944759",
+  "status": "complete",
+  "evaluation_scope": "full",
+  "evaluation": {
+    "model": "whisper_tiny",
+    "backend": "npu",
+    "scope": "full",
+    "samples": {
+      "count": 2620,
+      "unit": "utterance",
+      "selection_id": "9976e179bdf63d7f3bdbb9d38fbc034949ca0cb5eb2f4b7127fd2297e40c08c7"
+    },
+    "metrics": {
+      "WER": {
+        "value": 0.11199954740038094,
+        "unit": "ratio",
+        "higher_is_better": false
+      }
+    }
+  },
   "dataset": "librispeech",
   "samples": 2620,
   "metric": "WER",
-  "board_accuracy": 0.07560299470081279,
-  "npu_mean_ms": 379.18698358778624,
-  "timing_scope": "每条音频的 Encoder 与所有 Decoder NPU 调用之和",
-  "peak_rss_mib": 105.53125,
-  "memory_scope": "推理进程峰值 RSS",
+  "board_accuracy": 0.11199954740038094,
   "reference_accuracy": 0.07558413638335187,
-  "accuracy_loss_percentage_points": 0.0018858317460915264,
-  "accuracy_change_percentage_points": -0.0018858317460915264,
-  "reference_source": "本次 ONNX 浮点全量实测,使用与板端相同的评测协议",
-  "model_size": {
-    "unit": "MB",
-    "source_weights": null,
-    "fp32_onnx": null,
-    "quantized_tflite": null,
-    "compiled_dla": 116.03,
-    "auxiliary_weights": null,
-    "deployment_total": 116.03,
-    "files": [
-      {
-        "file": "decoder_step_fp32.dla",
-        "size_mb": 99.43,
-        "role": "compiled_dla"
-      },
-      {
-        "file": "encoder_fp32.dla",
-        "size_mb": 16.6,
-        "role": "compiled_dla"
-      }
-    ],
-    "source": "board_file_stat",
-    "directory": "<board_root>/open_models/whisper_tiny/models",
-    "collected_on": "2026-10-12",
-    "scope": "current_deployment_files_not_reverified_original_run"
+  "reference_source": "本次同模型同协议浮点全量实测",
+  "accuracy_change_percentage_points": -3.6415411017029067,
+  "comparison_status": "matched_reference",
+  "performance": {
+    "npu_mean_ms": 311.4360564665599,
+    "npu_p95_ms": 556.2785569112748,
+    "scope": "每条音频 Encoder 与全部 Decoder NPU 调用之和",
+    "peak_process_rss_mib": 87.2890625,
+    "memory_scope": "推理进程峰值 RSS,不等于设备总内存或驱动专用内存"
   },
-  "metrics_scope": "迁移前 C++/原生 CLI 的历史记录,当前 Python 推理尚未验证",
-  "target_backend": "python_neuron_runtime_hw"
+  "runtime": {
+    "backend": "python_neuron_runtime_hw",
+    "machine": "aarch64",
+    "kernel": "6.6.137-mtk+ga246e0c68c39-g429091ed5965"
+  },
+  "precision": "W8A16",
+  "cacheSize": 256,
+  "maxTokenLength": 448,
+  "cache_policy": "sliding_window",
+  "calibration_overlap": "LibriSpeech test-clean 前部音频,与正式评价重叠",
+  "model_files": [
+    {
+      "file": "models/tiny_encoder_w8a16.dla",
+      "bytes": 9189121
+    },
+    {
+      "file": "models/tiny_decoder_w8a16_1t256c.dla",
+      "bytes": 52019794
+    }
+  ],
+  "accuracy": {
+    "WER": {
+      "fp32_accuracy": 0.07558413638335187,
+      "npu_accuracy": 0.11199954740038094,
+      "higher_is_better": false,
+      "accuracy_loss_percentage_points": 3.6415411017029067
+    }
+  },
+  "sample_unit": "utterance",
+  "sample_ids_sha256": "9976e179bdf63d7f3bdbb9d38fbc034949ca0cb5eb2f4b7127fd2297e40c08c7"
 }

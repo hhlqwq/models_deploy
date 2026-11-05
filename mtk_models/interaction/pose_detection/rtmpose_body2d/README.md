@@ -1,7 +1,5 @@
 # RTMPose Body2d
 
-> Python 推理代码已迁移,尚未做板端验证.下文报告和示例属于迁移前的 C++/原生 CLI 实现,不能作为当前 Python 实现的精度、性能或 RSS.
-
 人体 WholeBody 姿态估计，输入为 256×192 RGB 人体裁剪图，输出 133 个关节点。正式上游为 OpenMMLab MMPose v1.3.2；来源见[模型卡](model_card.md)。
 
 量化方式: INT8 训练后量化 (PTQ),采用逐输出通道权重量化.
@@ -49,19 +47,28 @@ bash evaluate.sh
 Docker 需要 ONNX Runtime、NumPy、OpenCV、tqdm 和 xtcocotools。
 板端需要 NumPy、OpenCV 和 xtcocotools,用于可视化和计算 WholeBody AP.
 
-## 当前测试结果
+## G720 实测结果
 
-COCO-WholeBody val2017 全量 5000 张图片、104125 个人体框,采用 WholeBody AP.结果见 [summary.json](results/summary.json).
+正式评价覆盖 COCO-WholeBody val2017。主指标计分 104,125 个人体框，运行编号 `20261103_080139_1918290`。[正式报告](results/summary.json)
 
-| 指标 | 结果 |
-| --- | ---: |
-| ONNX FP32 WholeBody AP | 57.04% |
-| 板端 NPU WholeBody AP | **53.24%** |
-| 精度变化 | **-3.80 个百分点** |
-| 板端 NPU 平均耗时 | **3.86 ms** |
-| 推理进程峰值 RSS | **32.74 MiB** |
+| 指标 | 浮点参考 | G720 | 损失 |
+| --- | ---: | ---: | ---: | ---: |
+| WholeBody AP | 57.037% | 53.221% | +3.815 个百分点 |
 
-耗时为常驻模型下每个人体裁剪的 `NeuronRuntime_inference` 调用,不包含前后处理,也不是每张完整图片的耗时.峰值 RSS 包含运行库及前后处理,不代表 NPU 专用内存.
+板端性能为 NPU 平均 3.892 ms，P95 4.051 ms，Python 进程峰值 RSS 为 163.08 MiB。
+
+编译子集主指标计分 527 个人体框，运行编号 `20261030_080341_1720309`。[子集报告](results/summary_test.json)
+
+| 指标 | 浮点参考 | G720 | 损失 |
+| --- | ---: | ---: | ---: | ---: |
+| WholeBody AP | 54.004% | 50.055% | +3.948 个百分点 |
+
+损失为正表示退化。子集报告中的输出误差仅覆盖下表所列调用。
+
+| 输出 | 调用次数 | CosSim | RMSE | NRMSE |
+| --- | ---: | ---: | ---: | ---: |
+| `pred_x` | 5 | 0.980235 | 0.0480014 | 20.114% |
+| `pred_y` | 5 | 0.979896 | 0.046601 | 20.493% |
 
 ## 效果示例
 

@@ -4,23 +4,23 @@
   "top5_yamnet": [
     {
       "class": "Silence",
-      "score": 0.30210933089256287
+      "score": 0.301840215921402
     },
     {
       "class": "Coin (dropping)",
-      "score": 0.11687087267637253
+      "score": 0.11361999809741974
     },
     {
       "class": "Glass",
-      "score": 0.10546818375587463
+      "score": 0.11092681437730789
+    },
+    {
+      "class": "Chink, clink",
+      "score": 0.08017273247241974
     },
     {
       "class": "Cutlery, silverware",
-      "score": 0.07522501796483994
-    },
-    {
-      "class": "Dishes, pots, and pans",
-      "score": 0.07359056174755096
+      "score": 0.07940216362476349
     }
   ]
 }

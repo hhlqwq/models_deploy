@@ -11,7 +11,7 @@
 | 后端 | Python 直接调用 MTK Neuron Runtime,MDLA 5.3 |
 | 生成 | Greedy,关闭 thinking,停止 Token 为 1/130073 |
 
-当前默认使用已验证并固化的量化图、双 DLA 与配套资源.固定 16 题 MMLU 子集答对 **8/16**,同题浮点参考为 **13/16**;该子集不能代表整体 MMLU,也不证明已经达到量化最优.当前 Python 实现的正式范围精度、性能和 RSS 尚未完成评价.过程、对照与历史记录见 [ADAPTATION.md](ADAPTATION.md);[summary.json](results/summary.json) 明确保留迁移前历史报告.
+配方对照和适配过程见 [ADAPTATION.md](ADAPTATION.md)。
 
 ## 使用
 
@@ -27,9 +27,34 @@ bash deploy/compile.sh
 bash compile.sh
 ```
 
-板端检查少量输入,显示输入、实际聊天模板及流式文本,示例最多生成 32 Token,可能仅为回答片段;输出位于 `examples/output/`.compile 在两端对相同子集评分,板端将任务精度、精度损失及 CosSim/RMSE/NRMSE 写入 `results/summary_test.json`;总入口完成后自动回传报告和示例.本次文档补齐未重新生成示例或运行新的模型评价.
+板端检查少量输入,显示输入、实际聊天模板及流式文本,示例最多生成 32 Token,可能仅为回答片段;输出位于 `examples/output/`.compile 在两端对相同子集评分,板端将任务精度、精度损失及 CosSim/RMSE/NRMSE 写入 `results/summary_test.json`;总入口完成后自动回传报告和示例.[板端生成示例](examples/output/sample_1.txt)。
 
-`deploy/evaluate.sh` 是独立正式评价入口,不重新转换或编译,结果只写入 `results/summary.json`.正式 MMLU 为固定 1000 题、57 学科、seed=17,WikiText2 为完整 test;本轮没有执行正式范围评价.使用与板端目录规范见 [Genio 720 文档](../../../../docs/genio_720.md).
+`deploy/evaluate.sh` 是独立正式评价入口,不重新转换或编译,结果只写入 `results/summary.json`.正式 MMLU 为固定 1000 题、57 学科、seed=17,WikiText2 为完整 test。使用与板端目录规范见 [Genio 720 文档](../../../../docs/genio_720.md).
+
+## G720 实测结果
+
+正式评价覆盖 MMLU 固定千题、完整 WikiText2 test。主指标计分 1,000 题，运行编号 `20261104_072603_2241265`。[正式报告](results/summary.json)
+
+| 指标 | 浮点参考 | G720 | 损失 |
+| --- | ---: | ---: | ---: | ---: |
+| MMLU Accuracy | 55.900% | 41.300% | +14.600 个百分点 |
+| WikiText2 PPL（2,250 块，285,750 个计分 Token） | 37.626 | 45.103 | +7.477（+19.87%） |
+
+板端性能为 Prefill 284.55 Token/s，Decode 6.65 Token/s，Python 进程峰值 RSS 为 1254.62 MiB。
+MMLU 使用固定 1000 题、57 学科、seed=17。性能使用 128 Token 输入和实际生成的 128 Token。
+
+编译子集主指标计分 100 题，运行编号 `20261030_091512_1750273`。[子集报告](results/summary_test.json)
+
+| 指标 | 浮点参考 | G720 | 损失 |
+| --- | ---: | ---: | ---: | ---: |
+| MMLU Accuracy | 53.000% | 34.000% | +19.000 个百分点 |
+| WikiText2 PPL（16 块，2,032 个计分 Token） | 37.936 | 46.546 | +8.610（+22.70%） |
+
+损失为正表示退化。子集报告中的输出误差仅覆盖下表所列调用。
+
+| 输出 | 调用次数 | CosSim | RMSE | NRMSE |
+| --- | ---: | ---: | ---: | ---: |
+| `output` | 1 | 0.709780 | 2.26639 | 76.369% |
 
 ## DLA 文件
 
