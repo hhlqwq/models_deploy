@@ -72,11 +72,11 @@ ROS 2 发布深度 / 栅格 / 绕障路径 → RViz2 可视化
 - 权重: [`depth_anything_v2_metric_hypersim_vits.pth`](https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Small/resolve/main/depth_anything_v2_metric_hypersim_vits.pth).
 - 模型卡标注许可为 Apache-2.0;实施时固定源码与权重版本,保留实际来源、文件名及许可记录,本轮不下载资源.
 
-仓库现有 [depth_anything_v2_small](../../mtk_models/navigation/single_camera_depth/depth_anything_v2_small/README.md) 是**相对深度**实现,不能直接复用其 DLA 作为米制模型.可以审阅并复用兼容的导出处理与平台工具,但须独立核对 Metric 模型结构、权重、输出语义和编译产物,不覆盖已有相对深度模型或引用其历史性能作为本 Demo 成绩.
+仓库现有 [depth_anything_v2_small](../../../mtk_models/navigation/single_camera_depth/depth_anything_v2_small/README.md) 是**相对深度**实现.[S100 米制深度适配](../../../rdk_models/navigation/single_camera_depth/depth_anything_v2_metric_hypersim_vits/README.md)可供核对模型结构、权重和输出语义.目标设备使用该目标实际编译的制品,分别记录精度和性能.
 
 实施前先核对是否已有来源明确且契约匹配的 Metric 编译包.若没有,将该型号作为独立模型适配,按仓库规范安排浮点参考、转换、量化和 NPU 编译.量化精度、输入大小、原生 dtype 和量化尺度以实际转换结果确定,不因为已有相对深度模型是 INT8 就预先照搬.
 
-模型资源与编译流程继续放在 `models/` 体系并遵守其 Python 规范.Demo 原生 C++ 推理是本次明确指定的应用范围,不改共享 skill,不将既有模型部署程序改回 C++,不通过启动 Python 推理进程代替应用的原生接入.
+模型资源与编译流程由对应平台的模型适配目录维护.Demo 使用原生 C++ 接入目标 Runtime,按模型包的实际输入输出和坐标单位处理结果.
 
 ## 几何处理与障碍物距离
 

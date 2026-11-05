@@ -1,15 +1,12 @@
 # 模型目录
 
-本目录按照“Scenario → Category → Model”三级结构组织模型，覆盖模型来源、转换、量化、
-MTK NPU 部署、板端 Demo、精度与性能评估以及文档交付。Qualcomm AI Hub Models 仅作为
-目录结构、模型卡、Demo 和评测方式的 `delivery_reference`，实际模型必须使用官方或原作者
-公开源码与权重完成 MTK 侧转换和验证。
+本目录按场景、任务和模型组织，主要维护 G720 的模型来源、转换、量化、目标端推理和按需评价。独立应用见 [Demo 总览](../demo/README.md)。模型源码和权重来自作者或官方项目，旧的 Qualcomm AI Hub Models 记录作为 `delivery_reference`。
 
 ## 统一入口与 ONNX 命名
 
-在已有编译容器内执行 `bash mtk_models/deploy/compile.sh`,顺序调用全部 13 个模型的编译上传入口.该入口将本目录 `deploy/` 下的 compile、evaluate、upload 三个 Shell 脚本及本地回传配置上传到板端部署根目录 `deploy/` 下.板端运行同一份 `compile.sh` 做固定子集任务精度对比并保存示例,运行 `evaluate.sh` 做各模型约定的全量评价.容器中的 `bash mtk_models/deploy/evaluate.sh` 仅准备已有浮点模型的全量参考,必要资源按模型提示传输.板端只执行代码,不负责修改或生成脚本.
+单模型优先按其 README 选择入口.需要批量运行时,在已有编译容器内执行 `bash mtk_models/deploy/compile.sh`,顺序调用 13 个模型的编译上传入口,同时上传 `compile_board.sh`、`evaluate_board.sh`、`common.sh` 与本地回传配置.板端总入口分别编排模型的 `compile.sh` 与 `evaluate.sh`.需要独立评价时,容器端 `bash mtk_models/deploy/evaluate.sh` 使用已有模型准备所需参考.
 
-板端总 compile 成功后自动回传 results/summary_test.json 和示例,总 evaluate 成功后自动回传各模型 `results/summary.json` 和 `examples/output/` 到编译服务器对应模型目录.回传实现位于总 compile.sh 末尾,evaluate.sh 完成后调用仅回传分支,不重跑模型;不再提供 upload.sh.目标账户及仓库根目录由本地 `results_host`、`results_root` 配置,不包含在公开脚本中.缺失文件如实报告,不上传模型或临时过程文件,不自动提交结果.Whisper 新部署目标为全整数 W8A16、1t256c、Decoder 上限 448,本次流程修改不重新运行模型精度,下表历史浮点指标不代表该 W8A16 目标的新测结果.
+板端总入口通过 `deploy/common.sh` 回传已有摘要和示例.目标账户及仓库根目录由本地 `results_host`、`results_root` 配置.结果范围按各模型记录说明.Whisper 当前配方和历史指标的适用范围见 [模型说明](audio/stt/whisper_tiny/README.md).
 
 入口按 ResNet101、ViT、YOLOv5s、YOLOv8n、MobileFaceNet、RTMPose、FastSAM、Depth Anything V2、YAMNet、Whisper、BEVFusion、MiniCPM、DeepSeek 的顺序执行,首个失败即停止.板端部署子目录与模型代码目录末级名称一致,修改布局时同步更新总入口.
 
@@ -136,12 +133,10 @@ models/
     └── three_d_fusion/
 ```
 
-未开始的模型只保留在 `registry/target_models.yaml`，不预先创建大量空目录。模型通过
-来源、许可证、图结构和 MTK 算子预检查并进入实现阶段后，使用 `tools/create_model.py`
-创建完整交付目录，再加入 `registry/models.yaml`。
+后续方向见 [路线图](../docs/roadmap.md)。进入实现阶段后，按 [开发规范](../docs/development.md) 确认来源、许可和实际任务范围，再选择已有模板或同类模型目录。需要纳入现有模型检查索引时更新 `registry/models.yaml`。
 
 ## 使用与资源
 
-各模型的 README 提供配置、编译上传及板端运行方法.公共环境、NAS 资源规则和新增模型要求见[仓库说明](../README.md),板端目录及评价要求见[Genio 720 规范](../docs/genio_720.md).
+各模型的 README 提供配置、编译上传及板端运行方法。公共环境和资源规则见 [开发与测试环境](../docs/environment.md)，板端目录与评价口径见 [G720 板端指南](../docs/genio_720.md)。
 
-型号来源由 `registry/target_models.yaml` 和各模型的 `models/source_url.txt` 记录.原始权重、转换产物和数据集保存在 NAS,不放进代码目录或临时目录作为正式资源.
+实际模型来源见各模型的 `models/source_url.txt` 和模型卡。原始权重、转换产物和数据集通过本地配置定位。
