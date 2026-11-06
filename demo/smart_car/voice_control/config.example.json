@@ -15,7 +15,7 @@
         "threshold": 0.5
     },
     "speech": {
-        "wake_word": "小车"
+        "wake_word": "闪电"
     },
     "media": {
         "ipc_socket": "",

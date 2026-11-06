@@ -1,10 +1,10 @@
 # S100 语音控制 Demo
 
-C++ 应用在 S100 上运行。FILE 处理完输入文件后退出，MIC 持续监听到 Ctrl+C。两者共用 Silero VAD 和 Whisper tiny。转录交给本地口令规则或 DeepSeek，再输出小车控制 JSON 或独立的媒体意图 JSON，可作为 ROS2 String 的载荷。
+C++ 应用在 S100 上运行。FILE 处理完输入文件后退出，MIC 持续监听到 Ctrl+C。两者共用 Silero VAD 和 Whisper tiny。普通指令转录交给 DeepSeek 分类，程序校验参数，专用紧急停车直接输出，再输出小车控制 JSON 或独立的媒体意图 JSON，可作为 ROS2 String 的载荷。
 
 **先看业务**：[架构图、流程图与数据示例](docs/flow.md)。这里可以追踪一条口令经过哪些模块、何时调用 DeepSeek，以及需求变更会影响哪里。
 
-**进度**：已实现运动参数、转圈、MIC 转录前缀检查和 mpv IPC 播放控制。实际麦克风、扬声器和曲库待接入，流式停车关键词检测待接入。当前方案使用原始麦克风输入，扬声器串音需在设备联调时观察。历史 FILE 板端验证见第 5 节。
+**进度**：已实现运动参数、转圈、MIC 转录前缀检查和 mpv IPC 播放控制。实际麦克风、扬声器和曲库待接入，流式停车关键词检测待接入。当前方案使用原始麦克风输入，扬声器串音需在设备联调时观察。普通口令由 DeepSeek 分类，专用紧急停车直出。历史 FILE 板端验证见第 5 节。
 
 ## 1. 在已部署的板端运行
 
@@ -23,7 +23,7 @@ arecord -l
 
 FILE 需要板端 PATH 中有 `ffmpeg`，支持其可解码的音频，程序分块转换为 16 kHz 单声道 PCM。纯静音时只有诊断日志。可以在 FILE 命令尾部追加文件路径，程序按参数顺序处理。MIC 的 `audio.device` 需与 `arecord -l` 查到的设备一致，例如 `plughw:1,0`。中文使用 `whisper.language=zh`，英文样例用 `en`。
 
-MIC 的语音指令使用 `speech.wake_word` 前缀，默认「小车」，例如「小车，后退半米」「小车停车」「小车，播放第二首」。目前在 Whisper 转录后检查前缀，一句话包含一条命令。FILE 可使用有前缀或无前缀的录音，均只输出 JSON。
+MIC 的语音指令使用 `speech.wake_word` 前缀，默认「闪电」，例如「闪电，后退半米」「闪电停车」「闪电，播放第二首」。已有配置里若显式写了其他词，以该配置为准。目前在 Whisper 转录后检查前缀，一句话包含一条命令。FILE 可使用有前缀或无前缀的录音，均只输出 JSON。
 
 程序将结果逐行写到 stdout，应用日志写到 stderr。需要结果文件时，在启动命令后加 `> results/run.jsonl`，终端仍可查看转录、进度和错误。
 
@@ -48,7 +48,7 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「小车」，例�
    mpv --no-config --no-video --idle=yes --input-ipc-server="$PWD/run/mpv.sock"
    ```
 
-3. 说「小车，播放第一首」或「小车，停止播放」。播放时麦克风仍然持续采集。建议预置曲目避开唤醒词和完整口令，并在扬声器联调时核对误触发。 [mpv JSON IPC](https://mpv.io/manual/stable/#json-ipc)
+3. 说「闪电，播放第一首」或「闪电，停止播放」。播放时麦克风仍然持续采集。建议预置曲目避开唤醒词和完整口令，并在扬声器联调时核对误触发。 [mpv JSON IPC](https://mpv.io/manual/stable/#json-ipc)
 
 ## 2. 从仓库重新构建和部署
 
@@ -103,6 +103,7 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「小车」，例�
     },
     "transcript": "请向前走",
     "command": "forward",
+    "decision_path": "deepseek",
     "command_text": "前进",
     "parameters": {"distance_m": 1.0},
     "recognized": true,
@@ -122,6 +123,7 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「小车」，例�
 ```
 
 - 用 `source.sensor_id` 区分 FILE 的 `audio_file` 和 MIC 的 `usb_microphone`。序号从每次进程启动的 1 开始，`timestamp_ms` 是 Unix 毫秒时间戳。
+- `decision_path` 标明本次路径，分别为 `deepseek`、`emergency_stop` 或 `not_classified`。
 - 只有 `status=completed` 且 `recognized=true` 时可取用动作。空转录或超限转录为 `ignored`，模型错误为 `inference_error`。有错误详情时附加 `error` 字段。无有效语音时不输出结果。
 - `since_audio_end_ms` 从分句就绪计到 JSON 就绪前，包含队列等待和模型处理。VAD 推理累计耗时与尾静音音频时长分别记录，均在该边界之前。VAD 累计可包含上次结果之后的静音帧。未测阶段为 `null`。
 - 本程序只输出载荷。旧版若按 `[结果] ` 前缀提取 JSON，更新后可直接逐行解析 stdout。
@@ -133,10 +135,10 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「小车」，例�
 | 左转 | `left` | `angle_deg`，默认 90 | 左转四十五度 |
 | 右转 | `right` | `angle_deg`，默认 90 | 右转 30° |
 | 转圈 | `spin` | `angle_deg`，默认 360 | 转两圈，输出 720° |
-| 停止 | `stop` | 无 | 小车停车 |
+| 停止 | `stop` | 无 | 闪电停车 |
 | 未识别 | `unknown` | 无 | 前进两步 |
 
-距离和角度使用正值。显式数值支持阿拉伯数字和常用中文数字，距离接受米、厘米，角度接受度、°，转圈另接受圈数。只有未指定参数时使用默认值。带显式参数的口令使用表中的动作写法，不完整、含糊或使用未支持单位时输出未识别。转圈方向由接收方约定。
+距离和角度使用正值。显式数值支持阿拉伯数字和常用中文数字，距离接受米、厘米，角度接受度、°，角度也可用圈数表示。只有未指定参数时使用默认值。普通指令的说法可以变化，例如「往前挪两米」和「前进两米」都先交给 DeepSeek。程序随后从原文校验参数，不完整、含糊或使用未支持单位时输出未识别。转圈方向由接收方约定。
 
 媒体使用 `message_type=voice_media_intent`。当前支持「播放第 N 首」→ `play`（`parameters.track_number` 从 1 开始）、「暂停音乐」→ `pause`、「继续播放」→ `resume`、「停止播放」→ `stop_playback`。外层 `completed` 表示意图已识别。 `playback.status` 为 `accepted` 时表示 mpv 已应答，为 `error` 时附带错误信息。FILE 模式或 MIC 未配置 socket 时为 `intent_only`。
 
@@ -151,11 +153,13 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「小车」，例�
 | 分类提示词、结果校验和动作映射 | [控制协议](src/shared/command.hpp) |
 | 模型推理与计时 | [Whisper](src/platform/s100/whisper.hpp) · [DeepSeek](src/platform/s100/deepseek.hpp) |
 
-FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。MIC 用采集线程和有界队列，队列满时丢弃新语音段并写日志，Ctrl+C 等待在途推理结束。超过单段长度上限的语音会丢弃，FILE 会报告超长段并返回失败。明确的停车口令在转录后直接输出，跳过 DeepSeek，仍经过分句与 Whisper。DeepSeek 只处理本地规则未覆盖的无参数表达，并逐段重置上下文。默认 `llm.thinking=false`，通过在已验证的旧 SDK 模板前缀预填空思考段实现直答。模板不匹配或模型重新生成思考标记时报告错误。可用 `llm.thinking=true` 对照原模板。[DeepSeek 模型说明](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B#usage-recommendations)
+FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。MIC 用采集线程和有界队列，队列满时丢弃新语音段并写日志，Ctrl+C 等待在途推理结束。超过单段长度上限的语音会丢弃，FILE 会报告超长段并返回失败。只有专用紧急口令「闪电停车」在转录后直接输出，仍经过分句与 Whisper。普通运动、停止和媒体口令均交给 DeepSeek 判意图，程序再校验标签与原文参数。模型逐段重置上下文。默认 `llm.thinking=false`，通过在已验证的旧 SDK 模板前缀预填空思考段实现直答。模板不匹配或模型重新生成思考标记时报告错误。可用 `llm.thinking=true` 对照原模板。[DeepSeek 模型说明](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B#usage-recommendations)
 
 ## 5. 验证记录与剩余工作
 
-当前版本在既有 S100 Docker 中通过 FILE 和 MIC 交叉编译。模拟 mpv IPC 验证了播放、暂停、错误应答和超时。上一阶段用转录文本样例核对了默认参数、中文数字、无效参数、唤醒前缀、停车和媒体 JSON。新版待上板，实际语音识别和扬声器播放留待设备接入后核对。
+普通口令分流已纠正。快速文本断言覆盖了运动参数、同义表达、无效参数和紧急停车条件。板端使用既有 DeepSeek 跑了四条转录文本探针。「前进两米」和「往前挪两米」分别在约 0.41、0.39 秒内返回「前进」，最终参数均为 2 米。「把车停下」复述原话，「放一下第二首歌」生成了约 7.66 秒的解释，两条都因返回格式不符而输出未识别。预填空思考段仍不能保证模型每次只给标签。当前记录是文本探针，普通停止和媒体分类仍需改进，实际语音识别和扬声器播放待设备联调。
+
+2026-11-05 的 `0f37254` 做了关闭思考的板端对照，当时三个样本都经过 DeepSeek。2026-11-06 的 `820ff58` 增加了普通口令的本地分流，本版恢复普通口令先进入模型。两次变动的耗时数据应分别看。
 
 2026-11-05 的板端 FILE 验证使用英文转录配置。纯静音输出零条控制结果。36.91 秒混合文件包含合成指令、31 秒静音和固定种子噪声，依序输出前进、右转、停止，最后一条没有尾静音。无关问句输出未识别。记录位于板端统一目录的 `results/silero_file_check.json` 和 `results/direct_file_check.json`。
 

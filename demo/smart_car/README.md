@@ -1,6 +1,6 @@
 # 小车 Demo 总体开发与工程计划
 
-总体集成仍处于设计阶段,下述统一 Makefile、CMake 和 robot_demo 接口尚未实现.语音模块支持两种音频输入,共用 Silero VAD、Whisper tiny、本地口令解析和 DeepSeek 分类.目标、计划和实际状态以 [voice_control](voice_control/README.md) 为准.本文其余总体构建命令仍为拟定接口.
+总体集成仍处于设计阶段,下述统一 Makefile、CMake 和 robot_demo 接口尚未实现.语音模块支持两种音频输入,共用 Silero VAD、Whisper tiny、DeepSeek 分类和参数校验.目标、计划和实际状态以 [voice_control](voice_control/README.md) 为准.本文其余总体构建命令仍为拟定接口.
 
 ## 组成与开发顺序
 
@@ -8,7 +8,7 @@
 
 | 子 Demo | 独立运行 | 集成时职责 | 当前范围 |
 | --- | --- | --- | --- |
-| [voice_control](voice_control/README.md) | USB 麦克风或音频文件 → Silero VAD → Whisper tiny → 本地解析或 DeepSeek | 输出小车命令及距离或角度,独立媒体分支可控制 mpv | 已接入 mpv IPC,实际音频设备和曲库待配置 |
+| [voice_control](voice_control/README.md) | USB 麦克风或音频文件 → Silero VAD → Whisper tiny → DeepSeek 分类或紧急停车直出 | 输出小车命令及距离或角度,独立媒体分支可控制 mpv | 已接入 mpv IPC,实际音频设备和曲库待配置 |
 | [visual_perception](visual_perception/README.md) | RGB → Metric 深度 → 局部栅格 → A-star 绕障路径 → ROS 2/RViz2 | 接收目标并提供地图、路径和有效状态 | 单障碍物绕行路径展示,不接底盘 |
 | `robot_demo` | 后续整体联调入口 | 协调语音任务、规划、轨迹跟踪与任务反馈 | 后续开发,不预建空应用 |
 

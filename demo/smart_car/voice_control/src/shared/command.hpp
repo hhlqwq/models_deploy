@@ -34,14 +34,16 @@ inline const std::map<std::string, Command>& MotionCommands() {
     return commands;
 }
 
-// 将转录作为待分类数据,只请求无显式参数的单一动作标签.
+// 让模型理解完整自然语言,程序独立校验原文中的参数.
 inline std::string CommandPrompt(const std::string& transcript) {
-    return "你是小车指令分类器。只识别直接命令小车运动的单条祈使句。"
-        "往前走 / Move forward -> 前进，往后走 / Move backward -> 后退，"
-        "向左转 / Turn left -> 左转，向右转 / Turn right -> 右转，"
-        "转个圈 -> 转圈，停下 / Stop -> 停止。新闻、描述、提问、否定、冲突动作、加速均为未识别。"
-        "请根据" + nlohmann::json(transcript).dump(-1, ' ', false) +
-        "指令分析,只输出一个分类词:前进、后退、左转、右转、转圈、停止、未识别。";
+    return "你是小车语音意图分类器。根据整句识别一个用户要求的动作，理解口语和同义表达。"
+        "往前挪两米->前进；退回去半米->后退；向左拐->左转；往右拐->右转；"
+        "原地转两圈->转圈；把车停下->停止；放一下第二首歌->播放；"
+        "音乐先暂停一下->暂停音乐；接着放->继续播放；别再放音乐了->停止播放。"
+        "区分停车与停歌。闲聊、询问、转述、否定运动、冲突、多动作和不支持的要求归为未识别。"
+        "不要输出数值、解释或标点，只能输出一个标签："
+        "前进、后退、左转、右转、转圈、停止、播放、暂停音乐、继续播放、停止播放、未识别。"
+        "用户转录：" + nlohmann::json(transcript).dump(-1, ' ', false);
 }
 
 // 去除首尾空白,保留句中内容供整条匹配.
@@ -148,100 +150,81 @@ inline std::optional<double> ParseQuantity(const std::string& text) {
     return value + (current < 0 ? 0 : current);
 }
 
-// 匹配显式单位,缺省参数仅由调用方在后缀为空时填充.
-inline std::optional<double> QuantityWithUnit(const std::string& text, const std::string& unit,
-                                               double multiplier = 1) {
-    if (text.size() <= unit.size() ||
-        text.compare(text.size() - unit.size(), unit.size(), unit) != 0) {
-        return std::nullopt;
-    }
-    const auto number = ParseQuantity(Trim(text.substr(0, text.size() - unit.size())));
-    if (!number || *number <= 0 || !std::isfinite(*number * multiplier)) {
-        return std::nullopt;
-    }
-    return *number * multiplier;
+// 只有带唤醒词的专用停车口令直接输出.普通停止由模型判断.
+inline bool IsEmergencyStop(const std::string& transcript, const std::string& wake_word) {
+    return NormalizeCommand(transcript, wake_word, true) == "停车";
 }
 
-// 返回本地动作或明确拒绝;仅无参数的其他表达允许交给 LLM 分类.
-inline std::optional<Command> ParseCommand(const std::string& text) {
-    if (text.empty()) {
-        return Command{};
-    }
-    if (text == "停车" || text == "停" || text == "停下" || text == "停止") {
-        return MotionCommands().at("停止");
-    }
-    if (text == "暂停音乐" || text == "暂停播放") {
-        return Command{"pause", "暂停音乐", nullptr, 0, true};
-    }
-    if (text == "继续播放" || text == "继续音乐") {
-        return Command{"resume", "继续播放", nullptr, 0, true};
-    }
-    if (text == "停止播放" || text == "停止音乐") {
-        return Command{"stop_playback", "停止播放", nullptr, 0, true};
-    }
-    const std::string play_prefix = "播放第";
-    if (HasPrefix(text, play_prefix)) {
-        const auto track = QuantityWithUnit(text.substr(play_prefix.size()), "首");
-        if (track && std::floor(*track) == *track && *track <= 9999) {
-            return Command{"play", "播放", "track_number", *track, true};
-        }
-        return Command{};
-    }
-
-    for (const auto& [label, command] : MotionCommands()) {
-        if (text == label) {
-            return command;
-        }
-        if (command.parameter == nullptr) {
-            continue;
-        }
-        const bool spin = command.code == "spin";
-        const std::string prefix = spin && !HasPrefix(text, label) ? "转" : label;
-        if (!HasPrefix(text, prefix)) {
-            continue;
-        }
-        const auto quantity = Trim(text.substr(prefix.size()));
-        if (spin && quantity == "个圈") {
-            return command;
-        }
-        std::optional<double> value;
-        if (command.code == "forward" || command.code == "backward") {
-            value = QuantityWithUnit(quantity, "米");
-            if (!value) {
-                value = QuantityWithUnit(quantity, "厘米", 0.01);
-            }
-        } else {
-            value = QuantityWithUnit(quantity, "度");
-            if (!value) {
-                value = QuantityWithUnit(quantity, "°");
-            }
-            if (spin && !value) {
-                value = QuantityWithUnit(quantity, "圈", 360);
-            }
-        }
-        if (!value) {
-            return Command{};
-        }
-        auto result = command;
-        result.value = *value;
-        return result;
-    }
-
-    // 未支持的显式参数拒绝执行,避免模型忽略参数后套用默认值.
-    static const std::regex parameter_hint(
-        R"([0-9]|０|１|２|３|４|５|６|７|８|９|零|一|二|两|三|四|五|六|七|八|九|十|百|千|半|米|度|圈|°|几|多少|加速|播放|音乐|不要|别|不许)");
-    if (std::regex_search(text, parameter_hint)) {
-        return Command{};
-    }
-    return std::nullopt;
+// 判断原文是否还含有数量线索,防止识别失败后套用默认值.
+inline bool HasQuantityHint(std::string text) {
+    // “一下”用作语气词,例如“往前挪一下”.
+    static const std::regex polite("一下");
+    text = std::regex_replace(text, polite, "");
+    static const std::regex hint(
+        R"([0-9]|０|１|２|３|４|５|６|７|８|９|零|一|二|两|三|四|五|六|七|八|九|十|百|千|万|亿|半|米|度|°|几|多少)");
+    return std::regex_search(text, hint);
 }
 
-// 只接受闭合思考段之后的完整动作标签.
-inline Command ModelCommand(const std::string& raw) {
+// 从原文提取唯一的数量及单位,校验它是否适合模型选出的动作.
+inline Command ApplyParameter(Command command, const std::string& transcript) {
+    // 中文数字按 UTF-8 词项匹配,避免在单个汉字中切分字节.
+    static const std::regex explicit_quantity(
+        R"(([-+]?\s*(?:[0-9]+(?:\.[0-9]+)?|(?:零|一|二|两|三|四|五|六|七|八|九|十|百|千|万|亿|点|半)+))\s*(厘米|米|度|°|圈|首))");
+    std::smatch match;
+    if (!std::regex_search(transcript, match, explicit_quantity)) {
+        return command.code == "play" || HasQuantityHint(transcript) ? Command{} : command;
+    }
+    const auto before = match.prefix().str();
+    auto after = match.suffix().str();
+    const auto unit = match[2].str();
+    const bool has_extra_half = unit == "米" && HasPrefix(after, "半");
+    if (has_extra_half) {
+        after.erase(0, std::string("半").size());
+    }
+    static const std::regex invalid_prefix(R"((负|负数|−|－|\.)\s*$)");
+    if (!command.parameter || HasQuantityHint(before) || HasQuantityHint(after) ||
+        std::regex_search(before, invalid_prefix)) {
+        return {};
+    }
+    const auto value = ParseQuantity(Trim(match[1].str()));
+    if (!value || *value <= 0 || !std::isfinite(*value)) {
+        return {};
+    }
+
+    if (has_extra_half && std::floor(*value) != *value) {
+        return {};
+    }
+    const std::string parameter = command.parameter;
+    if (parameter == "distance_m" && (unit == "米" || unit == "厘米")) {
+        command.value = unit == "厘米" ? *value / 100 : *value + (has_extra_half ? 0.5 : 0);
+    } else if (parameter == "angle_deg" && (unit == "度" || unit == "°")) {
+        command.value = *value;
+    } else if (parameter == "angle_deg" && unit == "圈" && std::isfinite(*value * 360)) {
+        command.value = *value * 360;
+    } else if (command.code == "play" && unit == "首" && std::floor(*value) == *value && *value <= 9999) {
+        command.value = *value;
+    } else {
+        return {};
+    }
+    return command;
+}
+
+// 接受完整标签,由原始转录决定参数,保留媒体与小车的输出边界.
+inline Command ModelCommand(const std::string& raw, const std::string& transcript) {
     const auto close = raw.find("</think>");
     const auto answer = Trim(close == std::string::npos ? raw : raw.substr(close + 8));
-    const auto command = MotionCommands().find(answer);
-    return command == MotionCommands().end() ? Command{} : command->second;
+    const auto motion = MotionCommands().find(answer);
+    if (motion != MotionCommands().end()) {
+        return ApplyParameter(motion->second, transcript);
+    }
+    static const std::map<std::string, Command> media{
+        {"播放", {"play", "播放", "track_number", 0, true}},
+        {"暂停音乐", {"pause", "暂停音乐", nullptr, 0, true}},
+        {"继续播放", {"resume", "继续播放", nullptr, 0, true}},
+        {"停止播放", {"stop_playback", "停止播放", nullptr, 0, true}},
+    };
+    const auto result = media.find(answer);
+    return result == media.end() ? Command{} : ApplyParameter(result->second, transcript);
 }
 
 // 保留小车结果外层字段,媒体意图使用独立消息类型.

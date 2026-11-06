@@ -48,6 +48,7 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
     voice_control::DeepSeek::Timing llm_timing;
     voice_control::Command command;
     std::string transcript;
+    const char* decision_path = "not_classified";
     bool success = false;
     std::string error;
     try {
@@ -58,16 +59,19 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
         } else {
             const auto text = voice_control::NormalizeCommand(
                 transcript, input.wake_word, input.require_wake_word);
-            const auto local = voice_control::ParseCommand(text);
-            if (local) {
-                command = *local;
+            if (text.empty()) {
+                success = true;
+            } else if (voice_control::IsEmergencyStop(transcript, input.wake_word)) {
+                decision_path = "emergency_stop";
+                command = voice_control::MotionCommands().at("停止");
                 success = true;
             } else {
+                decision_path = "deepseek";
                 // 每条控制指令独立分析,防止前一条动作污染当前结果.
                 model.Reset();
                 success = model.Ask(voice_control::CommandPrompt(text), llm_timing);
                 if (success) {
-                    command = voice_control::ModelCommand(model.LastText());
+                    command = voice_control::ModelCommand(model.LastText(), text);
                 }
             }
         }
@@ -76,6 +80,7 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
         std::cerr << "[处理错误] " << error << std::endl;
     }
     auto result = voice_control::CommandResult(sequence, transcript, command, success);
+    result["decision_path"] = decision_path;
     if (!error.empty()) {
         result["error"] = error;
         if (error == "empty_or_excessive_transcript") {
@@ -262,7 +267,7 @@ int voice_control::RunApplication(int argc, char** argv) {
         const auto config = nlohmann::json::parse(stream);
         const auto audio_options = config.value("audio", nlohmann::json::object());
         const auto speech = config.value("speech", nlohmann::json::object());
-        const auto wake_word = voice_control::Trim(speech.value("wake_word", std::string("小车")));
+        const auto wake_word = voice_control::Trim(speech.value("wake_word", std::string("闪电")));
         const auto config_root = std::filesystem::absolute(argv[1]).parent_path();
         // 本地资源路径相对配置文件解析,从任意工作目录启动均一致.
         const auto resource_path = [&](const nlohmann::json& value) {
