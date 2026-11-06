@@ -1,8 +1,8 @@
 # S100 语音控制 Demo
 
-C++ 应用在 S100 上运行。FILE 处理完输入文件后退出，MIC 持续监听到 Ctrl+C。两者共用 Silero VAD → Whisper tiny → DeepSeek → 控制 JSON，结果输出到控制台，可作为 ROS2 String 的载荷。
+C++ 应用在 S100 上运行。FILE 处理完输入文件后退出，MIC 持续监听到 Ctrl+C。两者共用 Silero VAD 和 Whisper tiny。转录交给本地口令规则或 DeepSeek，再输出小车控制 JSON 或独立的媒体意图 JSON，可作为 ROS2 String 的载荷。
 
-**进度**：核心链路已开发。当前版本已整理应用入口、使用步骤和输出协议，FILE 与 MIC 均已通过 S100 交叉编译。上一版已在板端验证 FILE 静音、长文件多指令和文件末尾分句。新版输出待上板核对，真实 USB 麦克风、完整指令与噪声覆盖由用户验收，跨段会话历史仍待明确是否纳入六类控制场景。
+**进度**：已实现运动参数、转圈、媒体意图和 MIC 转录前缀检查。麦克风设备、mpv 播放及曲库留有配置入口。实际播放、流式停车关键词检测和消回声随设备联调接入。历史 FILE 板端验证见第 5 节。
 
 ## 1. 在已部署的板端运行
 
@@ -20,6 +20,8 @@ arecord -l
 ```
 
 FILE 需要板端 PATH 中有 `ffmpeg`，支持其可解码的音频，程序分块转换为 16 kHz 单声道 PCM。纯静音时只有诊断日志。可以在 FILE 命令尾部追加文件路径，程序按参数顺序处理。MIC 的 `audio.device` 需与 `arecord -l` 查到的设备一致，例如 `plughw:1,0`。中文使用 `whisper.language=zh`，英文样例用 `en`。
+
+MIC 的语音指令使用 `speech.wake_word` 前缀，默认「小车」，例如「小车，后退半米」「小车停车」「小车，播放第二首」。目前在 Whisper 转录后检查前缀，一句话包含一条命令。FILE 可使用有前缀或无前缀的录音，均只输出 JSON。
 
 程序将结果逐行写到 stdout，应用日志写到 stderr。需要结果文件时，在启动命令后加 `> results/run.jsonl`，终端仍可查看转录、进度和错误。
 
@@ -77,6 +79,7 @@ FILE 需要板端 PATH 中有 `ffmpeg`，支持其可解码的音频，程序分
     "transcript": "请向前走",
     "command": "forward",
     "command_text": "前进",
+    "parameters": {"distance_m": 1.0},
     "recognized": true,
     "status": "completed",
     "since_audio_end_ms": 1344.0,
@@ -94,9 +97,23 @@ FILE 需要板端 PATH 中有 `ffmpeg`，支持其可解码的音频，程序分
 ```
 
 - 用 `source.sensor_id` 区分 FILE 的 `audio_file` 和 MIC 的 `usb_microphone`。序号从每次进程启动的 1 开始，`timestamp_ms` 是 Unix 毫秒时间戳。
-- 动作映射为前进 `forward`、后退 `backward`、左转 `left`、右转 `right`、停止 `stop`、未识别 `unknown`。只有 `status=completed` 且 `recognized=true` 时可取用动作。空转录或超限转录为 `ignored`，模型错误为 `inference_error`。有错误详情时附加 `error` 字段。无有效语音时不输出结果。
+- 只有 `status=completed` 且 `recognized=true` 时可取用动作。空转录或超限转录为 `ignored`，模型错误为 `inference_error`。有错误详情时附加 `error` 字段。无有效语音时不输出结果。
 - `since_audio_end_ms` 从分句就绪计到 JSON 就绪前，包含队列等待和模型处理。VAD 推理累计耗时与尾静音音频时长分别记录，均在该边界之前。VAD 累计可包含上次结果之后的静音帧。未测阶段为 `null`。
 - 本程序只输出载荷。旧版若按 `[结果] ` 前缀提取 JSON，更新后可直接逐行解析 stdout。
+
+| 动作 | 命令码 | 参数和默认值 | 带参数示例 |
+| --- | --- | --- | --- |
+| 前进 | `forward` | `distance_m`，默认 1 | 前进两米 |
+| 后退 | `backward` | `distance_m`，默认 1 | 后退半米 |
+| 左转 | `left` | `angle_deg`，默认 90 | 左转四十五度 |
+| 右转 | `right` | `angle_deg`，默认 90 | 右转 30° |
+| 转圈 | `spin` | `angle_deg`，默认 360 | 转两圈，输出 720° |
+| 停止 | `stop` | 无 | 小车停车 |
+| 未识别 | `unknown` | 无 | 前进两步 |
+
+距离和角度使用正值。显式数值支持阿拉伯数字和常用中文数字，距离接受米、厘米，角度接受度、°，转圈另接受圈数。只有未指定参数时使用默认值。带显式参数的口令使用表中的动作写法，不完整、含糊或使用未支持单位时输出未识别。转圈方向由接收方约定。
+
+媒体使用 `message_type=voice_media_intent`。当前支持「播放第 N 首」→ `play`（`parameters.track_number` 从 1 开始）、「暂停音乐」→ `pause`、「继续播放」→ `resume`、「停止播放」→ `stop_playback`。媒体 `completed` 表示已识别意图。配置中的 `media.ipc_socket`、`media.output_device` 和 `media.tracks` 预留给后续 mpv 接入，当前不执行播放。
 
 ## 4. 代码入口与常用修改点
 
@@ -108,11 +125,11 @@ FILE 需要板端 PATH 中有 `ffmpeg`，支持其可解码的音频，程序分
 | 分类提示词、结果校验和动作映射 | [控制协议](src/shared/command.hpp) |
 | 模型推理与计时 | [Whisper](src/platform/s100/whisper.hpp) · [DeepSeek](src/platform/s100/deepseek.hpp) |
 
-FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。MIC 用采集线程和有界队列，队列满时丢弃新语音段并写日志，Ctrl+C 等待在途推理结束。超过单段长度上限的语音会丢弃，FILE 会报告超长段并返回失败。应用把当前段实际转录交给 DeepSeek，逐段重置上下文。默认 `llm.thinking=false`，通过在已验证的旧 SDK 模板前缀预填空思考段实现直答。模板不匹配时报错，模型重新生成思考标记时报告推理错误。可用 `llm.thinking=true` 对照原模板。[DeepSeek 模型说明](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B#usage-recommendations)
+FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。MIC 用采集线程和有界队列，队列满时丢弃新语音段并写日志，Ctrl+C 等待在途推理结束。超过单段长度上限的语音会丢弃，FILE 会报告超长段并返回失败。明确的停车口令在转录后直接输出，跳过 DeepSeek，仍经过分句与 Whisper。DeepSeek 只处理本地规则未覆盖的无参数表达，并逐段重置上下文。默认 `llm.thinking=false`，通过在已验证的旧 SDK 模板前缀预填空思考段实现直答。模板不匹配或模型重新生成思考标记时报告错误。可用 `llm.thinking=true` 对照原模板。[DeepSeek 模型说明](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B#usage-recommendations)
 
 ## 5. 验证记录与剩余工作
 
-本次整理在既有 S100 Docker 中执行了构建脚本语法检查和 FILE、MIC 两种模式的交叉编译。两份产物均核对为 AArch64。本次验证范围限于构建，新版程序待部署。
+本次在既有 S100 Docker 中验证了 FILE、MIC 的交叉编译，并用转录文本样例快速核对默认参数、中文数字、无效参数、唤醒前缀、停车和媒体 JSON。新版待上板，尚无本版的实际语音识别和播放结果。
 
 2026-11-05 的板端 FILE 验证使用英文转录配置。纯静音输出零条控制结果。36.91 秒混合文件包含合成指令、31 秒静音和固定种子噪声，依序输出前进、右转、停止，最后一条没有尾静音。无关问句输出未识别。记录位于板端统一目录的 `results/silero_file_check.json` 和 `results/direct_file_check.json`。
 
@@ -129,5 +146,5 @@ FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。
 | 资源、共同推理链路、FILE 分段 | 已接入并完成板端小样本验证 |
 | MIC 持续采集、队列与退出 | 已实现，真实 USB 连续采集、繁忙和断开留给用户验收 |
 | 应用入口、启动步骤、控制 JSON | 已整理，保留 `build.sh FILE\|MIC` 作为交叉编译入口 |
-| 跨段会话历史 | 当前逐段独立分类。待明确是否需要理解上一条指令的上下文 |
-| 完整验收 | 由用户执行，覆盖六类中文指令、噪声、否定、冲突和真实 USB 连续输入 |
+| mpv、硬件音频与流式停车 | 待接入实际音频设备与曲库，待验证播放期间的回声和关键词检测 |
+| 完整验收 | 由用户执行，覆盖中文动作及参数、噪声、否定、冲突和真实 USB 连续输入 |

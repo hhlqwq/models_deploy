@@ -26,14 +26,21 @@
 
 namespace {
 
+struct CommandInput {
+    std::string wake_word;
+    bool require_wake_word;
+};
+
 // 对每条完整语音只生成一个最终 JSON,模型异常不会变为有效动作.
 bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisper,
                   voice_control::DeepSeek& model, std::uint64_t sequence,
                   std::chrono::steady_clock::time_point ended,
-                  const voice_control::SpeechSegmenter::Timing& vad_timing) {
+                  const voice_control::SpeechSegmenter::Timing& vad_timing,
+                  const CommandInput& input) {
     const auto started = std::chrono::steady_clock::now();
     voice_control::Whisper::Timing asr_timing;
     voice_control::DeepSeek::Timing llm_timing;
+    voice_control::Command command;
     std::string transcript;
     bool success = false;
     std::string error;
@@ -43,15 +50,26 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
         if (transcript.empty() || transcript.size() > 2048) {
             error = "empty_or_excessive_transcript";
         } else {
-            // 每条控制指令独立分析,防止前一条动作污染当前结果.
-            model.Reset();
-            success = model.Ask(voice_control::CommandPrompt(transcript), llm_timing);
+            const auto text = voice_control::NormalizeCommand(
+                transcript, input.wake_word, input.require_wake_word);
+            const auto local = voice_control::ParseCommand(text);
+            if (local) {
+                command = *local;
+                success = true;
+            } else {
+                // 每条控制指令独立分析,防止前一条动作污染当前结果.
+                model.Reset();
+                success = model.Ask(voice_control::CommandPrompt(text), llm_timing);
+                if (success) {
+                    command = voice_control::ModelCommand(model.LastText());
+                }
+            }
         }
     } catch (const std::exception& exception) {
         error = exception.what();
         std::cerr << "[处理错误] " << error << std::endl;
     }
-    auto result = voice_control::CommandResult(sequence, transcript, model.LastText(), success);
+    auto result = voice_control::CommandResult(sequence, transcript, command, success);
     if (!error.empty()) {
         result["error"] = error;
         if (error == "empty_or_excessive_transcript") {
@@ -89,7 +107,7 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
 bool RunMicrophone(voice_control::Microphone& microphone,
                    voice_control::SpeechSegmenter& segmenter,
                    voice_control::Whisper& whisper, voice_control::DeepSeek& model,
-                   int capacity) {
+                   int capacity, const CommandInput& input) {
     std::uint64_t sequence = 0;
     bool all_processed = true;
     struct Utterance {
@@ -153,7 +171,7 @@ bool RunMicrophone(voice_control::Microphone& microphone,
                 queue.pop_front();
             }
             all_processed = ProcessAudio(utterance.audio, whisper, model, ++sequence,
-                utterance.ended, utterance.vad_timing) && all_processed;
+                utterance.ended, utterance.vad_timing, input) && all_processed;
         }
     } catch (...) {
         voice_control::stop_requested = 1;
@@ -167,7 +185,8 @@ bool RunMicrophone(voice_control::Microphone& microphone,
 #else
 // 按文件顺序解码和分句,处理完末尾语音后退出.
 bool RunFiles(int argc, char** argv, voice_control::SpeechSegmenter& segmenter,
-              voice_control::Whisper& whisper, voice_control::DeepSeek& model) {
+              voice_control::Whisper& whisper, voice_control::DeepSeek& model,
+              const CommandInput& input) {
     std::uint64_t sequence = 0;
     bool all_processed = true;
     std::cerr << "[就绪] FILE 模式,本地音频 -> Silero -> Whisper tiny -> DeepSeek -> 控制 JSON." << std::endl;
@@ -180,7 +199,7 @@ bool RunFiles(int argc, char** argv, voice_control::SpeechSegmenter& segmenter,
         const auto process = [&]() {
             const auto ended = std::chrono::steady_clock::now();
             all_processed = ProcessAudio(utterance, whisper, model, ++sequence,
-                ended, segmenter.TakeTiming()) && all_processed;
+                ended, segmenter.TakeTiming(), input) && all_processed;
             utterance.clear();
         };
         voice_control::ReadAudioFile(argv[i], [&](const std::vector<float>& frame) {
@@ -230,6 +249,8 @@ int voice_control::RunApplication(int argc, char** argv) {
         }
         const auto config = nlohmann::json::parse(stream);
         const auto audio_options = config.value("audio", nlohmann::json::object());
+        const auto speech = config.value("speech", nlohmann::json::object());
+        const auto wake_word = voice_control::Trim(speech.value("wake_word", std::string("小车")));
         const auto config_root = std::filesystem::absolute(argv[1]).parent_path();
         // 本地资源路径相对配置文件解析,从任意工作目录启动均一致.
         const auto resource_path = [&](const nlohmann::json& value) {
@@ -237,7 +258,13 @@ int voice_control::RunApplication(int argc, char** argv) {
             return (path.is_absolute() ? path : config_root / path).lexically_normal().string();
         };
 #ifdef VOICE_INPUT_MIC
+        const CommandInput input{wake_word, true};
+        if (input.wake_word.empty()) {
+            throw std::runtime_error("MIC 模式需要配置非空的 speech.wake_word.");
+        }
         voice_control::Microphone microphone(audio_options.at("device"));
+#else
+        const CommandInput input{wake_word, false};
 #endif
         const auto& vad = config.at("vad");
         voice_control::SpeechSegmenter segmenter(resource_path(vad.at("model")),
@@ -251,9 +278,9 @@ int voice_control::RunApplication(int argc, char** argv) {
         voice_control::Whisper whisper(resource_path(asr.at("models")), asr.value("language", "zh"));
 #ifdef VOICE_INPUT_MIC
         const bool all_processed = RunMicrophone(
-            microphone, segmenter, whisper, model, audio_options.value("queue_capacity", 2));
+            microphone, segmenter, whisper, model, audio_options.value("queue_capacity", 2), input);
 #else
-        const bool all_processed = RunFiles(argc, argv, segmenter, whisper, model);
+        const bool all_processed = RunFiles(argc, argv, segmenter, whisper, model, input);
 #endif
         rusage usage{};
         if (getrusage(RUSAGE_SELF, &usage) == 0) {

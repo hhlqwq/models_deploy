@@ -1,6 +1,6 @@
 # 语音控制运行流程
 
-FILE 和 MIC 是同一应用的两种构建模式。两者共享 Silero 分句、Whisper tiny 转录、DeepSeek 指令分类和 JSON 输出。程序入口 `main.cpp` 调用 Linux 应用层，由应用层解析配置并加载对应模型与输入设备。[应用代码](../src/platform/linux/application.cpp)
+FILE 和 MIC 是同一应用的两种构建模式。两者共享 Silero 分句、Whisper tiny 转录、本地口令规则、DeepSeek 分类和 JSON 输出。程序入口 `main.cpp` 调用 Linux 应用层，由应用层解析配置并加载对应模型与输入设备。[应用代码](../src/platform/linux/application.cpp)
 
 ```mermaid
 flowchart TD
@@ -12,8 +12,10 @@ flowchart TD
     F --> G[有界队列]
     E --> H[Whisper tiny 转录]
     G --> H
-    H --> I[有效转录进入独立 DeepSeek 会话]
-    I --> J[编码并输出一行控制 JSON]
+    H --> I[检查 MIC 前缀并解析转录]
+    I -->|明确口令或参数无效| J[输出小车结果或媒体意图 JSON]
+    I -->|其他无参数表达| L[DeepSeek 独立分类]
+    L --> J
     H -->|空或过长| K[输出忽略状态]
 ```
 
