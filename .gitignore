@@ -158,3 +158,6 @@ docs/*.xlsx
 *.hbm
 configs/platforms/*.local.known_hosts
 rdk_models/deploy/platform.local.sh
+
+# 测试文件
+demo/smart_car/voice_control/test_audio
