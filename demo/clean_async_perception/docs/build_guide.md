@@ -1,6 +1,29 @@
 # Async Perception 构建与 SDK 恢复指南
 
-本文件是 `async_perception` 的构建、SDK 恢复、验证与部署指南。目标平台为 **Linux x86_64**（Docker 容器或原生 Ubuntu 22.04）。
+本文件是 `async_perception` 的构建、SDK 恢复、验证与部署指南。默认目标为 Linux x86_64。G720 使用同一个构建入口，见下文。
+
+## MTK Genio 720
+
+将业务模型 `yolox_s_p2_detect.onnx` 和 `mobilenetv2.onnx` 放到 Demo 的 `models/` 目录。在已有 G720 NeuroPilot Docker 中，从 Demo 目录运行以下命令。请传入与实际地面和杂物场景匹配的校准图目录。
+
+```bash
+python scripts/compile_g720_models.py --calibration-dir /path/to/calibration-images --samples 32
+```
+
+脚本将 YOLOX Focus 切片和第一层卷积合并后再量化，使用 `mdla5.3` 编译两份 INT8 DLA，并将输入输出布局、量化参数和文件哈希写到 `models/g720/tensors.json`。源 ONNX、DLA 和生成配置都位于 Git 忽略目录。
+
+准备与板端 Rity 镜像匹配的 AArch64 工具链、OpenCV 和 Neuron Runtime 开发依赖。将 Orbbec v2.8.7 的 ARM64 发布包解压到 `dep/linux-arm64/orbbec_sdk/`，或通过 `G720_ORBBEC_SDK_ROOT` 指向已有 SDK。 [Orbbec 官方发布包](https://github.com/orbbec/OrbbecSDK_v2/releases/expanded_assets/v2.8.7)
+
+```bash
+export G720_TOOLCHAIN_FILE=/path/to/aarch64-toolchain.cmake
+export G720_NEURON_INCLUDE_DIR=/path/to/mt8189/include
+export G720_NEURON_LIBRARY=/path/to/libneuronusdk_runtime.mtk.so.8
+bash build.sh Release --platform mtk-g720
+```
+
+G720 运行包位于 `output/linux/mtk-g720/async_perception/`。将包部署到板端后，从包目录执行 `./async_perception`。默认以 `640×360 @ 30 fps` MJPEG 读取 Orbbec 彩色相机，输出 Web 预览和 ROS 2 `/perception/result`。G720 只发布 ROS 2 结果，因此构建只需要 `ament_cmake`、`rclcpp` 和 `std_msgs`。纯相机演示可用 `G720_ENABLE_ROS2=OFF bash build.sh Release --platform mtk-g720`，结果写到标准输出，每帧一行 JSON。板端使用系统现有的 Neuron Runtime 和 OpenCV。
+
+`bash build.sh clean --platform mtk-g720` 清理该目标的构建和输出目录。原有 Intel 构建、输出目录及 SDK 恢复命令继续使用下文说明。
 
 ## 1. 构建
 

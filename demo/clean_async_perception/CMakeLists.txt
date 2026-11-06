@@ -11,17 +11,34 @@ project(async_perception VERSION "${ASYNC_PERCEPTION_VERSION_NUMBER}" LANGUAGES 
 set(ASYNC_PERCEPTION_BUILD_MODE "Release" CACHE STRING "Build mode: Normal, Test or Release")
 set_property(CACHE ASYNC_PERCEPTION_BUILD_MODE PROPERTY STRINGS Normal Test Release)
 
+set(ASYNC_PERCEPTION_PLATFORM "linux-amd64" CACHE STRING "Target platform")
+set_property(CACHE ASYNC_PERCEPTION_PLATFORM PROPERTY STRINGS linux-amd64 mtk-g720)
+if(ASYNC_PERCEPTION_PLATFORM STREQUAL "mtk-g720")
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR
+       NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+        message(FATAL_ERROR "mtk-g720 requires an AArch64 Linux compiler/toolchain.")
+    endif()
+    set(ASYNC_PERCEPTION_PLATFORM_DIR "mtk-g720")
+    set(ORBBEC_ARCH "linux-arm64")
+elseif(ASYNC_PERCEPTION_PLATFORM STREQUAL "linux-amd64")
+    set(ASYNC_PERCEPTION_PLATFORM_DIR "amd64")
+    set(ORBBEC_ARCH "linux-x86_64")
+else()
+    message(FATAL_ERROR "Unknown ASYNC_PERCEPTION_PLATFORM: ${ASYNC_PERCEPTION_PLATFORM}")
+endif()
+
 set(ASYNC_PERCEPTION_OUTPUT_DIR
-    "${CMAKE_CURRENT_LIST_DIR}/output/linux/amd64/async_perception")
+    "${CMAKE_CURRENT_LIST_DIR}/output/linux/${ASYNC_PERCEPTION_PLATFORM_DIR}/async_perception")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${ASYNC_PERCEPTION_OUTPUT_DIR}")
 
 # Orbbec SDK
 set(ORBBEC_SDK_ROOT
-    "${CMAKE_CURRENT_LIST_DIR}/dep/linux-x86_64/orbbec_sdk" CACHE PATH "Orbbec SDK root")
+    "${CMAKE_CURRENT_LIST_DIR}/dep/${ORBBEC_ARCH}/orbbec_sdk" CACHE PATH "Orbbec SDK root")
 set(OrbbecSDK_DIR "${ORBBEC_SDK_ROOT}/lib")
 find_package(OrbbecSDK REQUIRED CONFIG)
 
-# Async Infer SDK (Intel OpenVINO)
+if(ASYNC_PERCEPTION_PLATFORM STREQUAL "linux-amd64")
+# Intel OpenVINO SDK.
 set(ASYNC_INFER_SDK_ROOT
     "${CMAKE_CURRENT_LIST_DIR}/dep/linux-x86_64/async_infer_sdk" CACHE PATH "AsyncInfer SDK root")
 set(ASYNC_INFER_INCLUDE_DIR "${ASYNC_INFER_SDK_ROOT}/sdk/include")
@@ -31,12 +48,21 @@ if(NOT EXISTS "${ASYNC_INFER_INCLUDE_DIR}/async_infer.h"
    OR NOT EXISTS "${ASYNC_INFER_LIBRARY}")
     message(FATAL_ERROR "Missing AsyncInfer SDK. Run restore_sdk.sh linux-x86_64 first.")
 endif()
+endif()
 
-# ROS2 Humble
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
+set(ASYNC_PERCEPTION_ENABLE_ROS2 ON)
+if(ASYNC_PERCEPTION_PLATFORM STREQUAL "mtk-g720")
+    option(G720_ENABLE_ROS2 "Publish G720 perception results over ROS 2" ON)
+    set(ASYNC_PERCEPTION_ENABLE_ROS2 "${G720_ENABLE_ROS2}")
+endif()
+if(ASYNC_PERCEPTION_ENABLE_ROS2)
+    find_package(ament_cmake REQUIRED)
+    find_package(rclcpp REQUIRED)
+    find_package(std_msgs REQUIRED)
+    if(ASYNC_PERCEPTION_PLATFORM STREQUAL "linux-amd64")
+        find_package(sensor_msgs REQUIRED)
+    endif()
+endif()
 
 # OpenCV (system)
 find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs)
@@ -46,10 +72,6 @@ add_executable(async_perception
     src/platform/linux/linux_application.cpp
     src/platform/linux/web_preview_server.cpp
     src/platform/linux/web_preview_server.hpp
-    src/platform/linux/ros2/ros2_json_publisher.cpp
-    src/platform/linux/ros2/ros2_json_publisher.hpp
-    src/platform/linux/ros2/ros2_image_subscriber.cpp
-    src/platform/linux/ros2/ros2_image_subscriber.hpp
     src/shared/core/perception_foundation.hpp
     src/shared/perception/async_inference_pipeline.hpp
     src/shared/reporting/perception_result_protocol.hpp
@@ -68,20 +90,34 @@ target_compile_features(async_perception PRIVATE cxx_std_17)
 target_compile_definitions(async_perception PRIVATE
     ASYNC_PERCEPTION_VERSION="${ASYNC_PERCEPTION_VERSION}"
     ASYNC_PERCEPTION_BUILD_MODE="${ASYNC_PERCEPTION_BUILD_MODE}"
-    ASYNC_PERCEPTION_BUILD_TARGET="linux-amd64")
+    ASYNC_PERCEPTION_BUILD_TARGET="${ASYNC_PERCEPTION_PLATFORM}")
 
-target_include_directories(async_perception PRIVATE
-    "${CMAKE_CURRENT_LIST_DIR}/src"
-    "${ASYNC_INFER_INCLUDE_DIR}")
+target_include_directories(async_perception PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
 
-ament_target_dependencies(async_perception rclcpp std_msgs sensor_msgs)
+if(ASYNC_PERCEPTION_ENABLE_ROS2)
+    target_sources(async_perception PRIVATE src/platform/linux/ros2/ros2_json_publisher.cpp)
+    if(ASYNC_PERCEPTION_PLATFORM STREQUAL "linux-amd64")
+        target_sources(async_perception PRIVATE src/platform/linux/ros2/ros2_image_subscriber.cpp)
+        ament_target_dependencies(async_perception rclcpp std_msgs sensor_msgs)
+    else()
+        ament_target_dependencies(async_perception rclcpp std_msgs)
+    endif()
+else()
+    target_compile_definitions(async_perception PRIVATE ASYNC_PERCEPTION_NO_ROS2)
+endif()
 
 target_include_directories(async_perception PRIVATE
     "${OpenCV_INCLUDE_DIRS}")
 
+if(ASYNC_PERCEPTION_PLATFORM STREQUAL "mtk-g720")
+    include(cmake/mtk-g720.cmake)
+else()
+    target_include_directories(async_perception PRIVATE "${ASYNC_INFER_INCLUDE_DIR}")
+    set(ASYNC_PERCEPTION_INFERENCE_LIBRARY "${ASYNC_INFER_LIBRARY}")
+endif()
 target_link_libraries(async_perception
     ob::OrbbecSDK
-    "${ASYNC_INFER_LIBRARY}"
+    "${ASYNC_PERCEPTION_INFERENCE_LIBRARY}"
     ${OpenCV_LIBS}
     pthread dl)
 
@@ -96,6 +132,7 @@ if(BUILD_TESTING)
 
 endif()
 
+if(ASYNC_PERCEPTION_PLATFORM STREQUAL "linux-amd64")
 set(MOBILENETV2_MODEL_DIR
     "${CMAKE_CURRENT_LIST_DIR}/models/mobilenetv2")
 if(NOT EXISTS "${MOBILENETV2_MODEL_DIR}/mobilenetv2.xml"
@@ -143,3 +180,4 @@ add_custom_command(TARGET async_perception POST_BUILD
         "${CMAKE_CURRENT_LIST_DIR}/src/platform/linux/config/async_perception.ini"
         "$<TARGET_FILE_DIR:async_perception>/config/async_perception.ini"
 )
+endif()

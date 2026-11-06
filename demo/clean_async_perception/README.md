@@ -89,6 +89,8 @@ cd async_perception
 
 `clean` 不删除 SDK、缓存、发布包、BAG、日志或录制结果。
 
+MTK Genio 720 使用同一构建入口，从本目录运行 `bash build.sh Release --platform mtk-g720`。G720 默认使用本机 Orbbec 彩色相机和 Neuron Runtime，ROS 2 只用于发布感知结果。模型准备和工具链参数见 [G720 构建指南](docs/build_guide.md#mtk-genio-720)。
+
 ## 网页推理预览
 
 应用默认在 `0.0.0.0:8080` 启动只读预览服务。运行后访问

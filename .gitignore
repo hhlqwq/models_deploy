@@ -24,6 +24,10 @@ logs/
 !mtk_models/**/results/full_accuracy/**/*.log
 
 # 模型与转换产物.
+demo/clean_async_perception/models/
+demo/clean_async_perception/dep/
+demo/clean_async_perception/build/
+demo/clean_async_perception/output/
 mtk_models/gen_ai/llm/deepseek_r1_distill_qwen_1_5b/models/generated/
 *.pt
 *.pth

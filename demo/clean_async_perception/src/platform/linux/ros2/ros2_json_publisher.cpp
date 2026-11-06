@@ -12,50 +12,49 @@ constexpr std::size_t kQueueDepth = 10;
 }  // namespace
 
 RosPublisher::RosPublisher(int argc, char** argv) {
-  if (rclcpp::ok()) {
-    throw std::runtime_error("ROS2 default context is already initialized");
-  }
-  rclcpp::init(argc, argv);
-  ownsRuntime_ = true;
-  node_ = std::make_shared<rclcpp::Node>(kNodeName);
-  publisher_ = node_->create_publisher<std_msgs::msg::String>(kTopicName, kQueueDepth);
+    if (rclcpp::ok()) {
+        throw std::runtime_error("ROS2 default context is already initialized");
+    }
+    rclcpp::init(argc, argv);
+    ownsRuntime_ = true;
+    node_ = std::make_shared<rclcpp::Node>(kNodeName);
+    publisher_ =
+        node_->create_publisher<std_msgs::msg::String>(kTopicName, kQueueDepth);
 }
 
-RosPublisher::~RosPublisher() {
-  shutdown();
-}
+RosPublisher::~RosPublisher() { shutdown(); }
 
 bool RosPublisher::publish(const std::string& json) noexcept {
-  if (!publisher_ || !rclcpp::ok()) return false;
-  try {
-    std_msgs::msg::String message;
-    message.data = json;
-    publisher_->publish(message);
-    return true;
-  } catch (const std::exception& error) {
-    std::cerr << "[ROS2] publish failed: " << error.what() << '\n';
-  } catch (...) {
-    std::cerr << "[ROS2] publish failed: unknown exception\n";
-  }
-  return false;
+    if (!publisher_ || !rclcpp::ok()) return false;
+    try {
+        std_msgs::msg::String message;
+        message.data = json;
+        publisher_->publish(message);
+        return true;
+    } catch (const std::exception& error) {
+        std::cerr << "[ROS2] publish failed: " << error.what() << '\n';
+    } catch (...) {
+        std::cerr << "[ROS2] publish failed: unknown exception\n";
+    }
+    return false;
 }
 
 void RosPublisher::spinSome() noexcept {
-  if (!node_ || !rclcpp::ok()) return;
-  try {
-    rclcpp::spin_some(node_);
-  } catch (const std::exception& error) {
-    std::cerr << "[ROS2] spin_some failed: " << error.what() << '\n';
-  } catch (...) {
-    std::cerr << "[ROS2] spin_some failed: unknown exception\n";
-  }
+    if (!node_ || !rclcpp::ok()) return;
+    try {
+        rclcpp::spin_some(node_);
+    } catch (const std::exception& error) {
+        std::cerr << "[ROS2] spin_some failed: " << error.what() << '\n';
+    } catch (...) {
+        std::cerr << "[ROS2] spin_some failed: unknown exception\n";
+    }
 }
 
 void RosPublisher::shutdown() noexcept {
-  publisher_.reset();
-  node_.reset();
-  if (ownsRuntime_) {
-    if (rclcpp::ok()) rclcpp::shutdown();
-    ownsRuntime_ = false;
-  }
+    publisher_.reset();
+    node_.reset();
+    if (ownsRuntime_) {
+        if (rclcpp::ok()) rclcpp::shutdown();
+        ownsRuntime_ = false;
+    }
 }
