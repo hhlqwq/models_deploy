@@ -4,7 +4,7 @@ C++ 应用在 S100 上运行。FILE 处理完输入文件后退出，MIC 持续�
 
 **先看业务**：[架构图、流程图与数据示例](docs/flow.md)。这里可以追踪一条口令经过哪些模块、何时调用 DeepSeek，以及需求变更会影响哪里。
 
-**进度**：已实现运动参数、转圈、MIC 转录前缀检查和 mpv IPC 播放控制。实际麦克风、扬声器和曲库待接入，流式停车关键词检测待接入。当前方案使用原始麦克风输入，扬声器串音需在设备联调时观察。普通口令由 DeepSeek 分类，专用紧急停车直出。历史 FILE 板端验证见第 5 节。
+**进度**：普通口令由 DeepSeek 判断，专用紧急停车直出。已加入试验性复合指令模式和整份计划校验。默认沿用单动作模式，真人录音和复合语义准确率待验证。MIC 仍采用 Silero 分句后交给 Whisper 的方式，流式转录和流式停车待接入。
 
 ## 1. 在已部署的板端运行
 
@@ -142,6 +142,31 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「闪电」，例�
 
 媒体使用 `message_type=voice_media_intent`。当前支持「播放第 N 首」→ `play`（`parameters.track_number` 从 1 开始）、「暂停音乐」→ `pause`、「继续播放」→ `resume`、「停止播放」→ `stop_playback`。外层 `completed` 表示意图已识别。 `playback.status` 为 `accepted` 时表示 mpv 已应答，为 `error` 时附带错误信息。FILE 模式或 MIC 未配置 socket 时为 `intent_only`。
 
+### 试验性复合指令
+
+在测试配置里设置 `speech.command_mode=plan` 后，DeepSeek 处理整段转录，返回按顺序和并行关系分组的动作。程序逐条验证模型引用的原文、参数和组间关系，然后一次性写出计划。语音模块负责发送结果，控制层解释顺序并执行。单动作仍使用原有消息类型。只要有一个动作或引用未通过校验，整段就返回未识别，格式或校验失败带 `error=invalid_command_plan`。
+
+下面是「往前走两米后左转，然后再走一米的同时播放第一首歌」的**期望消息摘要**。
+
+```json
+{
+    "message_type": "voice_command_plan",
+    "decision_path": "deepseek",
+    "recognized": true,
+    "status": "completed",
+    "steps": [
+        [{"command": "forward", "parameters": {"distance_m": 2}}],
+        [{"command": "left", "parameters": {"angle_deg": 90}}],
+        [
+            {"command": "forward", "parameters": {"distance_m": 1}},
+            {"command": "play", "parameters": {"track_number": 1}}
+        ]
+    ]
+}
+```
+
+外层步骤有先后，同一步里的动作并行。当前校验上限是 8 步，每步最多一个运动和一个媒体动作。计划中的播放随消息一起发出；独立媒体口令仍按 MIC 的 mpv 配置处理。跨 VAD 分段续说、改口和复杂歧义属于待验证范围，测试时注意区分转录漏词和模型编排错误。
+
 ## 4. 代码入口与常用修改点
 
 | 要改什么 | 入口 |
@@ -151,11 +176,14 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「闪电」，例�
 | mpv 命令、曲库与 IPC 应答 | [播放器接口](src/platform/linux/mpv_player.hpp) |
 | 语音分句、尾静音、最长语句 | [Silero 分句](src/shared/speech_segmenter.hpp)，优先修改 [运行配置](config.example.json) |
 | 分类提示词、结果校验和动作映射 | [控制协议](src/shared/command.hpp) |
+| 复合指令提示词、步骤校验和计划消息 | [复合计划](src/shared/command_plan.hpp) |
 | 模型推理与计时 | [Whisper](src/platform/s100/whisper.hpp) · [DeepSeek](src/platform/s100/deepseek.hpp) |
 
 FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。MIC 用采集线程和有界队列，队列满时丢弃新语音段并写日志，Ctrl+C 等待在途推理结束。超过单段长度上限的语音会丢弃，FILE 会报告超长段并返回失败。只有专用紧急口令「闪电停车」在转录后直接输出，仍经过分句与 Whisper。普通运动、停止和媒体口令均交给 DeepSeek 判意图，程序再校验标签与原文参数。模型逐段重置上下文。默认 `llm.thinking=false`，通过在已验证的旧 SDK 模板前缀预填空思考段实现直答。模板不匹配或模型重新生成思考标记时报告错误。可用 `llm.thinking=true` 对照原模板。[DeepSeek 模型说明](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B#usage-recommendations)
 
 ## 5. 验证记录与剩余工作
+
+复合指令阶段通过 FILE/MIC 交叉编译及本地断言。断言覆盖三步含并行的正确计划、原文被改写、缺少曲目、错分先后与并行及整体拒绝。2026-11-06 的板端 DeepSeek 文本探针中，试验模式识别了单条「前进两米」（约 0.94 秒），并返回空计划处理「天气怎么样」（约 0.65 秒）。目标复合口令约 2.66 秒返回，但把前进与左转放进同一步，并改写了原文片段，校验后输出未识别。保留 `single` 为默认，复合模式尚未通过板端语义验收。
 
 普通口令分流已纠正。快速文本断言覆盖了运动参数、同义表达、无效参数和紧急停车条件。板端使用既有 DeepSeek 跑了四条转录文本探针。「前进两米」和「往前挪两米」分别在约 0.41、0.39 秒内返回「前进」，最终参数均为 2 米。「把车停下」复述原话，「放一下第二首歌」生成了约 7.66 秒的解释，两条都因返回格式不符而输出未识别。预填空思考段仍不能保证模型每次只给标签。当前记录是文本探针，普通停止和媒体分类仍需改进，实际语音识别和扬声器播放待设备联调。
 
@@ -176,5 +204,20 @@ FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。
 | 资源、共同推理链路、FILE 分段 | 已接入并完成板端小样本验证 |
 | MIC 持续采集、队列与退出 | 已实现，真实 USB 连续采集、繁忙和断开留给用户验收 |
 | 应用入口、启动步骤、控制 JSON | 已整理，保留 `build.sh FILE\|MIC` 作为交叉编译入口 |
+| 复合语义 | 已实现试验模式、关系校验和消息协议；现用 DeepSeek 未通过目标复合口令探针 |
 | mpv、硬件音频与流式停车 | 已接入 mpv IPC，实际音频设备和曲库待配置；流式关键词检测待接入 |
+| 流式转录 | 当前先分句再转录；候选是 sherpa-onnx 中文流式 Zipformer 14M INT8。后续用同一批录音对比，统计说完到 JSON 输出的耗时。[候选模型说明](https://k2-fsa.github.io/sherpa/onnx/pretrained_models/online-transducer/zipformer-transducer-models.html) |
 | 完整验收 | 由用户执行，覆盖中文动作及参数、噪声、否定、冲突和真实 USB 连续输入 |
+
+### 真人录音清单
+
+每条单独录一个文件，优先使用 WAV。用自然语速说，文件尾留约一秒安静。FILE 模式接受有无「闪电」前缀的录音；为了后续复用到 MIC 验收，建议都带前缀。
+
+| 文件 | 建议口令 | 期望 |
+| --- | --- | --- |
+| `single.wav` | 闪电，往前挪两米 | 前进 2 米 |
+| `sequence.wav` | 闪电，往前走两米，左转之后再走一米 | 依次前进 2 米、左转 90°、前进 1 米 |
+| `parallel.wav` | 闪电，往前走两米后左转，然后再走一米的同时播放第一首歌 | 三步，最后一步包含前进和播放 |
+| `missing_track.wav` | 闪电，往前走两米，然后播一首歌 | 曲目不明确，整段未识别 |
+| `correction.wav` | 闪电，往前走两米，不对，三米 | 检查是否误发 2 米，允许当前版本拒绝 |
+| `stop.wav` | 闪电停车 | `stop`，`decision_path=emergency_stop` |

@@ -34,8 +34,8 @@ inline const std::map<std::string, Command>& MotionCommands() {
     return commands;
 }
 
-// 让模型理解完整自然语言,程序独立校验原文中的参数.
-inline std::string CommandPrompt(const std::string& transcript) {
+// 单动作模式继续让模型理解自然语言,并沿用已核对的短标签协议.
+inline std::string SingleCommandPrompt(const std::string& transcript) {
     return "你是小车语音意图分类器。根据整句识别一个用户要求的动作，理解口语和同义表达。"
         "往前挪两米->前进；退回去半米->后退；向左拐->左转；往右拐->右转；"
         "原地转两圈->转圈；把车停下->停止；放一下第二首歌->播放；"
@@ -182,6 +182,7 @@ inline Command ApplyParameter(Command command, const std::string& transcript) {
         after.erase(0, std::string("半").size());
     }
     static const std::regex invalid_prefix(R"((负|负数|−|－|\.)\s*$)");
+    static const std::regex track_ordinal(R"(第\s*$)");
     if (!command.parameter || HasQuantityHint(before) || HasQuantityHint(after) ||
         std::regex_search(before, invalid_prefix)) {
         return {};
@@ -201,7 +202,8 @@ inline Command ApplyParameter(Command command, const std::string& transcript) {
         command.value = *value;
     } else if (parameter == "angle_deg" && unit == "圈" && std::isfinite(*value * 360)) {
         command.value = *value * 360;
-    } else if (command.code == "play" && unit == "首" && std::floor(*value) == *value && *value <= 9999) {
+    } else if (command.code == "play" && unit == "首" && std::floor(*value) == *value && *value <= 9999 &&
+               std::regex_search(before, track_ordinal)) {
         command.value = *value;
     } else {
         return {};
@@ -209,10 +211,8 @@ inline Command ApplyParameter(Command command, const std::string& transcript) {
     return command;
 }
 
-// 接受完整标签,由原始转录决定参数,保留媒体与小车的输出边界.
-inline Command ModelCommand(const std::string& raw, const std::string& transcript) {
-    const auto close = raw.find("</think>");
-    const auto answer = Trim(close == std::string::npos ? raw : raw.substr(close + 8));
+// 将模型动作标签映射到已有命令,再从对应原文校验参数.
+inline Command CommandFromLabel(const std::string& answer, const std::string& transcript) {
     const auto motion = MotionCommands().find(answer);
     if (motion != MotionCommands().end()) {
         return ApplyParameter(motion->second, transcript);

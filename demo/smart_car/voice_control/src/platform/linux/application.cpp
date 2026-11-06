@@ -24,7 +24,7 @@
 #endif
 #include "platform/s100/deepseek.hpp"
 #include "platform/s100/whisper.hpp"
-#include "shared/command.hpp"
+#include "shared/command_plan.hpp"
 #include "shared/speech_segmenter.hpp"
 
 namespace {
@@ -32,6 +32,7 @@ namespace {
 struct CommandInput {
     std::string wake_word;
     bool require_wake_word;
+    bool enable_command_plan;
 #ifdef VOICE_INPUT_MIC
     const voice_control::MpvPlayer& player;
 #endif
@@ -46,7 +47,7 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
     const auto started = std::chrono::steady_clock::now();
     voice_control::Whisper::Timing asr_timing;
     voice_control::DeepSeek::Timing llm_timing;
-    voice_control::Command command;
+    voice_control::CommandPlan plan;
     std::string transcript;
     const char* decision_path = "not_classified";
     bool success = false;
@@ -63,15 +64,24 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
                 success = true;
             } else if (voice_control::IsEmergencyStop(transcript, input.wake_word)) {
                 decision_path = "emergency_stop";
-                command = voice_control::MotionCommands().at("停止");
+                plan = {{voice_control::MotionCommands().at("停止")}};
                 success = true;
             } else {
                 decision_path = "deepseek";
                 // 每条控制指令独立分析,防止前一条动作污染当前结果.
                 model.Reset();
-                success = model.Ask(voice_control::CommandPrompt(text), llm_timing);
-                if (success) {
-                    command = voice_control::ModelCommand(model.LastText(), text);
+                const auto prompt = input.enable_command_plan ? voice_control::CommandPrompt(text) :
+                    voice_control::SingleCommandPrompt(text);
+                success = model.Ask(prompt, llm_timing);
+                if (success && input.enable_command_plan) {
+                    auto parsed = voice_control::ParseCommandPlan(model.LastText(), text);
+                    if (parsed) {
+                        plan = std::move(*parsed);
+                    } else {
+                        error = "invalid_command_plan";
+                    }
+                } else if (success) {
+                    plan = voice_control::ParseSingleCommand(model.LastText(), text);
                 }
             }
         }
@@ -79,7 +89,7 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
         error = exception.what();
         std::cerr << "[处理错误] " << error << std::endl;
     }
-    auto result = voice_control::CommandResult(sequence, transcript, command, success);
+    auto result = voice_control::PlanResult(sequence, transcript, plan, success);
     result["decision_path"] = decision_path;
     if (!error.empty()) {
         result["error"] = error;
@@ -89,12 +99,12 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
     }
 #ifdef VOICE_INPUT_MIC
     result["source"]["sensor_id"] = "usb_microphone";
-    if (success && command.media) {
-        result["playback"] = input.player.Execute(command);
+    if (success && result["message_type"] == "voice_media_intent") {
+        result["playback"] = input.player.Execute(plan.front().front());
     }
 #else
     result["source"]["sensor_id"] = "audio_file";
-    if (success && command.media) {
+    if (success && result["message_type"] == "voice_media_intent") {
         result["playback"] = {{"status", "intent_only"}};
     }
 #endif
@@ -267,6 +277,10 @@ int voice_control::RunApplication(int argc, char** argv) {
         const auto config = nlohmann::json::parse(stream);
         const auto audio_options = config.value("audio", nlohmann::json::object());
         const auto speech = config.value("speech", nlohmann::json::object());
+        const auto command_mode = speech.value("command_mode", std::string("single"));
+        if (command_mode != "single" && command_mode != "plan") {
+            throw std::runtime_error("speech.command_mode 必须为 single 或 plan.");
+        }
         const auto wake_word = voice_control::Trim(speech.value("wake_word", std::string("闪电")));
         const auto config_root = std::filesystem::absolute(argv[1]).parent_path();
         // 本地资源路径相对配置文件解析,从任意工作目录启动均一致.
@@ -276,13 +290,13 @@ int voice_control::RunApplication(int argc, char** argv) {
         };
 #ifdef VOICE_INPUT_MIC
         const voice_control::MpvPlayer player(config.value("media", nlohmann::json::object()), config_root);
-        const CommandInput input{wake_word, true, player};
+        const CommandInput input{wake_word, true, command_mode == "plan", player};
         if (input.wake_word.empty()) {
             throw std::runtime_error("MIC 模式需要配置非空的 speech.wake_word.");
         }
         voice_control::Microphone microphone(audio_options.at("device"));
 #else
-        const CommandInput input{wake_word, false};
+        const CommandInput input{wake_word, false, command_mode == "plan"};
 #endif
         const auto& vad = config.at("vad");
         voice_control::SpeechSegmenter segmenter(resource_path(vad.at("model")),

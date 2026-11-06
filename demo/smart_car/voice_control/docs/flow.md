@@ -23,7 +23,7 @@ flowchart LR
     subgraph Decision["指令处理"]
         Gate["前缀检查 · 紧急停车分流"]
         Validate["动作和原文参数校验"]
-        Llm["DeepSeek · 普通口令语义分类"]
+        Llm["DeepSeek · 单动作判断或复合计划"]
     end
     subgraph Outputs["输出"]
         Json["stdout · 一段一行 JSON"]
@@ -37,7 +37,7 @@ flowchart LR
     Asr -->|"转录文本"| Gate
     Gate -->|"普通口令"| Llm
     Gate -->|"紧急停车或入口拒绝"| Json
-    Llm -->|"模型动作标签"| Validate
+    Llm -->|"动作标签或分组计划"| Validate
     Validate -->|"小车命令、媒体意图或未识别"| Json
     Validate -->|"MIC 媒体意图且已配置 IPC"| Player
     Player -->|"IPC 应答"| Json
@@ -62,15 +62,15 @@ flowchart TD
     Wake -->|"是，或 FILE 有正文"| Emergency{"完整转录是闪电停车？"}
     Emergency -->|"是"| Stop["直接输出 stop"]
     Emergency -->|"否"| DeepSeek["把普通口令正文交给 DeepSeek"]
-    DeepSeek -->|"返回动作标签"| Verify{"动作和原文参数是否有效？"}
+    DeepSeek -->|"返回动作标签或分组计划"| Verify{"动作、原文参数和关系是否有效？"}
     Verify -->|"有效运动或普通停止"| Motion["输出小车命令和适用参数"]
     Verify -->|"有效媒体意图"| Playback{"MIC 已配置 mpv socket？"}
+    Verify -->|"有效复合计划"| Plan["一次发送 voice_command_plan"]
     Verify -->|"无效"| Unknown
     Playback -->|"是"| IPC["查曲库或设置播放状态，记录 mpv 应答"]
     Playback -->|"否"| Intent["仅保留媒体意图"]
     IPC --> Media["输出媒体结果 JSON"]
     Intent --> Media
-    DeepSeek -->|"返回未识别或无效标签"| Unknown
     DeepSeek -->|"推理失败"| Error
 ```
 
@@ -112,6 +112,7 @@ sequenceDiagram
 | 指令分流 | 原始转录 → 去掉前缀及分隔符 → 紧急停车直出，或把普通口令正文完整交给 DeepSeek。 | [动作、参数和媒体规则](../src/shared/command.hpp) |
 | DeepSeek | 普通口令正文 → 分类提示词 → 模型动作标签。默认直答由模板控制。 | [分类提示词](../src/shared/command.hpp) · [DeepSeek 接入](../src/platform/s100/deepseek.hpp) |
 | 参数校验 | 模型动作标签 + 原始口令正文 → 校验单位、唯一数量及默认值 → 可输出动作或 `unknown`。 | [参数规则](../src/shared/command.hpp) |
+| 试验性复合计划 | 同一语音段 → 模型引用原文并拆动作 → 程序校验各步骤和并行关系 → 一条 `voice_command_plan`。发送后继续收音。 | [计划解析](../src/shared/command_plan.hpp) · [启用方式及协议](../README.md#试验性复合指令) |
 | 媒体播放 | `track_number` → 配置中的本地 MP3 路径 → mpv IPC 命令 → `playback.status`。 | [mpv 接入](../src/platform/linux/mpv_player.hpp) |
 | 结果输出 | 动作或媒体意图 + 转录 + 来源 + 状态 + 计时 → 一行 JSON。 | [应用入口](../src/platform/linux/application.cpp) · [JSON 编码](../src/shared/command.hpp) |
 

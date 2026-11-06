@@ -15,7 +15,8 @@
         "threshold": 0.5
     },
     "speech": {
-        "wake_word": "闪电"
+        "wake_word": "闪电",
+        "command_mode": "single"
     },
     "media": {
         "ipc_socket": "",
