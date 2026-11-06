@@ -1,3 +1,30 @@
+# 机器人感知应用
+
+本目录承载清洁机器人端的 RGB/Depth/IR 采集、异步推理与融合展示应用。
+
+## 当前工程
+
+- `async_perception/`：跨平台异步感知应用；Windows 提供 GUI，Linux x86_64 提供控制台运行形态。
+- 实例分割和语义分割通过 AsyncInfer SDK 异步执行；RGB、D2C Depth 与 IR 用于融合辅助。
+- Windows GUI 与 Linux 控制台已复用同一套采集、对齐、异步推理、融合和 MP4 录制链路。后续 Linux 服务只需在平台适配层补充 JSON 网络发送，不得复制或分叉感知 Pipeline。
+- `src/shared/` 仅保留跨平台共享 Pipeline；平台相关配置、资源和生命周期代码分别放在 `src/platform/windows/`、`src/platform/linux/` 与 `src/platform/windows/ui/`。
+- 四个构建入口为 `build_win64.bat`、`build_amd64.sh`、`build_aarch64.sh` 和 `build_x5.sh`。
+
+## 目录约定
+
+- `async_perception/src/`：应用源代码。
+- `async_perception/docs/`：构建与依赖说明。
+- `async_perception/dep/`：本应用的平台 SDK 放置点，不提交大型二进制依赖。
+- `async_perception/output/`：构建生成的可交付运行包，不提交。
+- `async_perception/build_win64.bat`、`async_perception/build_amd64.sh`、`async_perception/build_aarch64.sh`、`async_perception/build_x5.sh`：四个构建目标的入口。
+- `async_perception/src/platform/windows/config/`：Windows 配置与文件选择。
+- `async_perception/src/platform/windows/path/`：Windows 文件路径适配。
+- `async_perception/src/platform/windows/resources/`：Windows 图标和资源脚本。
+- `async_perception/src/platform/windows/ui/`：Windows 控件、布局和消息处理。
+- `async_perception/src/platform/linux/config/`：Linux 控制台配置模板。
+
+应用架构见 [应用说明](async_perception/README.md)，四个目标的环境、SDK 准备、构建、验证与发布步骤统一见 [构建指南](async_perception/docs/build_guide.md)。
+
 # Orbbec Async Perception
 
 `async_perception` 是清扫机器人 POC 的异步感知应用。支持 Orbbec 相机、BAG 回放和 ROS2 原始图像输入；YOLOX 执行目标检测，MobileNetV2 对同一画面执行地面分类，
@@ -13,24 +40,6 @@ src/main.cpp
 ```
 
 Pipeline 固定按 `数据采集 → 感知处理 → 结果整合 → 结果编码上报` 运行。平台层只负责配置读取和生命周期管理。
-
-## 单帧运行流程
-
-```mermaid
-flowchart LR
-    A[Orbbec 实时彩色帧] --> C[当前 BGR 帧]
-    B[ROS 2 图像与内参] --> Q[有界队列取最新帧]
-    Q --> C
-    C --> D[提交 YOLOX 检测]
-    C --> E[提交 MobileNetV2 分类]
-    D --> F[主循环等待本帧回调]
-    E --> F
-    F --> G[合并结果与可用的 IPM 信息]
-    G --> H[ROS 2 感知 JSON]
-    G --> I[可选 Web 预览]
-```
-
-主循环为同一帧提交两个模型任务，再等待回调和整合结果。ROS 2 输入优先处理最新帧。BAG 回放是单独的输入分支，当前转换路径有已记录的问题，见 [输入模式和线程说明](docs/async_perception_app_design_doc_yolox_ros.md#42-live-与-playback-模式)。
 
 `src/platform/linux/config/async_perception.ini` 的 `application.mode` 可选 `ros`、`live`、`playback`。默认 `ros` 使用 `/camera/color/image_raw` (`sensor_msgs/msg/Image`, `rgb8`) 和 `/camera/color/camera_info` (`sensor_msgs/msg/CameraInfo`)；`live` 与 `playback` 保留原 Orbbec 路径。详情见 [Part 2 接入说明](docs/async_perception_app_design_doc_yolox_ros.md)。
 

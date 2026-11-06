@@ -55,7 +55,7 @@ inline std::string encodeResult(uint64_t sequenceId, int frameId, int frameWidth
                                 const ResultSource& source,
                                 const DirtAssessment& assessment) {
   std::ostringstream json;
-  json << "{\"version\":\"1.0\",\"message_type\":\"perception_result\","
+  json << "{\"version\":\"1.1\",\"message_type\":\"perception_result\","
        << "\"sequence_id\":" << sequenceId << ",\"timestamp_ms\":" << unixTimestampMs()
          << ",\"source\":{\"device_id\":\"async_perception\","
          << "\"sensor_id\":\"" << escapeJson(source.sensorId)

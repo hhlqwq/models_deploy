@@ -101,6 +101,12 @@ int main() {
   expectNear(smoother.add(5.0), 5.0, 1e-9,
              "calibration reset clears smoothing history");
 
+  CoverageSmoother scoreSmoother(5);
+  for (double score : {18.0, 0.4, 0.1, 0.0, 0.0, 0.0, 0.0})
+    scoreSmoother.add(score);
+  expect(scoreSmoother.add(0.0) == 0.0,
+         "zero-valued score window has no negative rounding residue");
+
   const YoloxResult detections{};
   const RuntimeMetrics metrics{};
   const perception_protocol::ResultSource source{};

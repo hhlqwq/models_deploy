@@ -135,21 +135,21 @@ class CoverageSmoother {
 
   void reset() {
     samples_.clear();
-    sum_ = 0.0;
   }
 
   double add(double coveragePercent) {
     samples_.push_back(coveragePercent);
-    sum_ += coveragePercent;
     if (samples_.size() > windowSize_) {
-      sum_ -= samples_.front();
       samples_.pop_front();
     }
-    return sum_ / static_cast<double>(samples_.size());
+    // The window is small; recomputing avoids a negative rounding residue
+    // after positive values leave a window of zero-valued samples.
+    double sum = 0.0;
+    for (const double sample : samples_) sum += sample;
+    return sum / static_cast<double>(samples_.size());
   }
 
  private:
   size_t windowSize_;
   std::deque<double> samples_;
-  double sum_ = 0.0;
 };

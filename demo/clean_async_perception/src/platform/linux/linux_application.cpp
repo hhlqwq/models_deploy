@@ -154,6 +154,11 @@ int runLinuxApplication(int argc, char** argv) {
           imageTopic, cameraInfoTopic, static_cast<size_t>(queueCapacity));
     } else {
     // Orbbec pipeline setup
+    if (mode == "playback") {
+      const std::string extensionsDirectory =
+          (executable.parent_path() / "extensions").string();
+      ob::Context::setExtensionsDirectory(extensionsDirectory.c_str());
+    }
     context = std::make_shared<ob::Context>();
 
     if (mode == "playback") {
@@ -227,10 +232,9 @@ int runLinuxApplication(int argc, char** argv) {
       std::cerr << "IPM disabled - set ipm.fx/fy/cx/cy/img_width/img_height in INI" << std::endl;
     }
 
-    // Don't create FormatConvertFilter for playback mode
-    if (mode != "playback") {
-      converter = std::make_shared<ob::FormatConvertFilter>();
-    }
+    // Both live and playback may yield compressed or non-RGB color frames.
+    // ensureRgbFrame() requires a converter even when the frame is already RGB.
+    converter = std::make_shared<ob::FormatConvertFilter>();
     }
     uint64_t processedFrames = 0;
     uint64_t sequenceId = 0;
