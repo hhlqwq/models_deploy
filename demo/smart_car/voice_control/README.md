@@ -2,7 +2,7 @@
 
 C++ 应用在 S100 上运行。FILE 处理完输入文件后退出，MIC 持续监听到 Ctrl+C。两者共用 Silero VAD 和 Whisper tiny。转录交给本地口令规则或 DeepSeek，再输出小车控制 JSON 或独立的媒体意图 JSON，可作为 ROS2 String 的载荷。
 
-**进度**：已实现运动参数、转圈、媒体意图和 MIC 转录前缀检查。麦克风设备、mpv 播放及曲库留有配置入口。实际播放、流式停车关键词检测和消回声随设备联调接入。历史 FILE 板端验证见第 5 节。
+**进度**：已实现运动参数、转圈、MIC 转录前缀检查和 mpv IPC 播放控制。实际麦克风、扬声器和曲库待接入，流式停车关键词检测待验证。当前方案使用原始麦克风输入，扬声器串音需在设备联调时观察。历史 FILE 板端验证见第 5 节。
 
 ## 1. 在已部署的板端运行
 
@@ -24,6 +24,29 @@ FILE 需要板端 PATH 中有 `ffmpeg`，支持其可解码的音频，程序分
 MIC 的语音指令使用 `speech.wake_word` 前缀，默认「小车」，例如「小车，后退半米」「小车停车」「小车，播放第二首」。目前在 Whisper 转录后检查前缀，一句话包含一条命令。FILE 可使用有前缀或无前缀的录音，均只输出 JSON。
 
 程序将结果逐行写到 stdout，应用日志写到 stderr。需要结果文件时，在启动命令后加 `> results/run.jsonl`，终端仍可查看转录、进度和错误。
+
+### 启用 MIC 模式的音乐播放
+
+1. 在 `config.json` 中填写板端实际 MP3 路径。曲目按数组顺序编号，路径和 IPC socket 都相对配置文件所在目录解析。 `output_device` 留空时使用 mpv 当前设备，接好扬声器后可用 `mpv --audio-device=help` 查看可用名称。
+
+   ```json
+   {
+       "media": {
+           "ipc_socket": "run/mpv.sock",
+           "output_device": "",
+           "tracks": ["audio/song1.mp3", "audio/song2.mp3"]
+       }
+   }
+   ```
+
+2. 在统一运行目录的另一个终端启动本地 mpv，再启动 MIC。socket 仅供本机访问。
+
+   ```bash
+   install -d -m 700 run
+   mpv --no-config --no-video --idle=yes --input-ipc-server="$PWD/run/mpv.sock"
+   ```
+
+3. 说「小车，播放第一首」或「小车，停止播放」。播放时麦克风仍然持续采集。建议预置曲目避开唤醒词和完整口令，并在扬声器联调时核对误触发。 [mpv JSON IPC](https://mpv.io/manual/stable/#json-ipc)
 
 ## 2. 从仓库重新构建和部署
 
@@ -113,7 +136,7 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「小车」，例�
 
 距离和角度使用正值。显式数值支持阿拉伯数字和常用中文数字，距离接受米、厘米，角度接受度、°，转圈另接受圈数。只有未指定参数时使用默认值。带显式参数的口令使用表中的动作写法，不完整、含糊或使用未支持单位时输出未识别。转圈方向由接收方约定。
 
-媒体使用 `message_type=voice_media_intent`。当前支持「播放第 N 首」→ `play`（`parameters.track_number` 从 1 开始）、「暂停音乐」→ `pause`、「继续播放」→ `resume`、「停止播放」→ `stop_playback`。媒体 `completed` 表示已识别意图。配置中的 `media.ipc_socket`、`media.output_device` 和 `media.tracks` 预留给后续 mpv 接入，当前不执行播放。
+媒体使用 `message_type=voice_media_intent`。当前支持「播放第 N 首」→ `play`（`parameters.track_number` 从 1 开始）、「暂停音乐」→ `pause`、「继续播放」→ `resume`、「停止播放」→ `stop_playback`。外层 `completed` 表示意图已识别。 `playback.status` 为 `accepted` 时表示 mpv 已应答，为 `error` 时附带错误信息。FILE 模式或 MIC 未配置 socket 时为 `intent_only`。
 
 ## 4. 代码入口与常用修改点
 
@@ -121,6 +144,7 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「小车」，例�
 | --- | --- |
 | 命令行、配置、FILE/MIC 主流程和退出 | [Linux 应用入口](src/platform/linux/application.cpp)，由 [main.cpp](src/main.cpp) 调用 |
 | FILE 解码或 MIC 设备 | [Linux 音频输入](src/platform/linux/audio.hpp) |
+| mpv 命令、曲库与 IPC 应答 | [播放器接口](src/platform/linux/mpv_player.hpp) |
 | 语音分句、尾静音、最长语句 | [Silero 分句](src/shared/speech_segmenter.hpp)，优先修改 [运行配置](config.example.json) |
 | 分类提示词、结果校验和动作映射 | [控制协议](src/shared/command.hpp) |
 | 模型推理与计时 | [Whisper](src/platform/s100/whisper.hpp) · [DeepSeek](src/platform/s100/deepseek.hpp) |
@@ -129,7 +153,7 @@ FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。
 
 ## 5. 验证记录与剩余工作
 
-本次在既有 S100 Docker 中验证了 FILE、MIC 的交叉编译，并用转录文本样例快速核对默认参数、中文数字、无效参数、唤醒前缀、停车和媒体 JSON。新版待上板，尚无本版的实际语音识别和播放结果。
+当前版本在既有 S100 Docker 中通过 FILE 和 MIC 交叉编译。模拟 mpv IPC 验证了播放、暂停、错误应答和超时。上一阶段用转录文本样例核对了默认参数、中文数字、无效参数、唤醒前缀、停车和媒体 JSON。新版待上板，实际语音识别和扬声器播放留待设备接入后核对。
 
 2026-11-05 的板端 FILE 验证使用英文转录配置。纯静音输出零条控制结果。36.91 秒混合文件包含合成指令、31 秒静音和固定种子噪声，依序输出前进、右转、停止，最后一条没有尾静音。无关问句输出未识别。记录位于板端统一目录的 `results/silero_file_check.json` 和 `results/direct_file_check.json`。
 
@@ -146,5 +170,5 @@ FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。
 | 资源、共同推理链路、FILE 分段 | 已接入并完成板端小样本验证 |
 | MIC 持续采集、队列与退出 | 已实现，真实 USB 连续采集、繁忙和断开留给用户验收 |
 | 应用入口、启动步骤、控制 JSON | 已整理，保留 `build.sh FILE\|MIC` 作为交叉编译入口 |
-| mpv、硬件音频与流式停车 | 待接入实际音频设备与曲库，待验证播放期间的回声和关键词检测 |
+| mpv、硬件音频与流式停车 | 已接入 mpv IPC，实际音频设备和曲库待配置；流式关键词检测待接入 |
 | 完整验收 | 由用户执行，覆盖中文动作及参数、噪声、否定、冲突和真实 USB 连续输入 |

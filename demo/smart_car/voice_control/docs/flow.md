@@ -16,6 +16,8 @@ flowchart TD
     I -->|明确口令或参数无效| J[输出小车结果或媒体意图 JSON]
     I -->|其他无参数表达| L[DeepSeek 独立分类]
     L --> J
+    I -->|MIC 媒体意图且已配置 socket| M[发送 mpv IPC 并读取应答]
+    M --> J
     H -->|空或过长| K[输出忽略状态]
 ```
 

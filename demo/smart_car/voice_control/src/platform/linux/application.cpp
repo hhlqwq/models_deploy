@@ -19,6 +19,9 @@
 
 #include "platform/linux/application.hpp"
 #include "platform/linux/audio.hpp"
+#ifdef VOICE_INPUT_MIC
+#include "platform/linux/mpv_player.hpp"
+#endif
 #include "platform/s100/deepseek.hpp"
 #include "platform/s100/whisper.hpp"
 #include "shared/command.hpp"
@@ -29,6 +32,9 @@ namespace {
 struct CommandInput {
     std::string wake_word;
     bool require_wake_word;
+#ifdef VOICE_INPUT_MIC
+    const voice_control::MpvPlayer& player;
+#endif
 };
 
 // 对每条完整语音只生成一个最终 JSON,模型异常不会变为有效动作.
@@ -78,8 +84,14 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
     }
 #ifdef VOICE_INPUT_MIC
     result["source"]["sensor_id"] = "usb_microphone";
+    if (success && command.media) {
+        result["playback"] = input.player.Execute(command);
+    }
 #else
     result["source"]["sensor_id"] = "audio_file";
+    if (success && command.media) {
+        result["playback"] = {{"status", "intent_only"}};
+    }
 #endif
     // 缺失阶段输出 null,避免把未执行或未完成的计时写为零.
     const auto measured = [](double value) -> nlohmann::json {
@@ -258,7 +270,8 @@ int voice_control::RunApplication(int argc, char** argv) {
             return (path.is_absolute() ? path : config_root / path).lexically_normal().string();
         };
 #ifdef VOICE_INPUT_MIC
-        const CommandInput input{wake_word, true};
+        const voice_control::MpvPlayer player(config.value("media", nlohmann::json::object()), config_root);
+        const CommandInput input{wake_word, true, player};
         if (input.wake_word.empty()) {
             throw std::runtime_error("MIC 模式需要配置非空的 speech.wake_word.");
         }
