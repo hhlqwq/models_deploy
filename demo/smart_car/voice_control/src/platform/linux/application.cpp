@@ -54,24 +54,29 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
     std::string transcript;
     std::optional<std::string> simplified;
     const char* decision_path = "not_classified";
+    const char* rejection_reason = nullptr;
     bool success = false;
     std::string error;
     try {
         transcript = voice_control::Trim(whisper.Transcribe(audio, asr_timing));
-        std::cerr << "[转录] " << transcript << std::endl;
         if (transcript.empty() || transcript.size() > 2048) {
             error = "empty_or_excessive_transcript";
         } else {
             if (input.normalizer) {
                 simplified = input.normalizer->Convert(transcript);
-                if (*simplified != transcript) {
-                    std::cerr << "[简体转录] " << *simplified << std::endl;
-                }
             }
             const auto& command_transcript = simplified ? *simplified : transcript;
+            std::cerr << "[转录] " << command_transcript << std::endl;
             const auto text = voice_control::NormalizeCommand(
                 command_transcript, input.wake_word, input.require_wake_word);
             if (text.empty()) {
+                if (input.require_wake_word && !voice_control::HasPrefix(command_transcript, input.wake_word)) {
+                    rejection_reason = "wake_word_missing";
+                    std::cerr << "[唤醒] 未匹配唤醒词「" << input.wake_word << "」." << std::endl;
+                } else {
+                    rejection_reason = "empty_command";
+                    std::cerr << "[指令] 唤醒词后没有命令正文." << std::endl;
+                }
                 success = true;
             } else if (voice_control::IsEmergencyStop(command_transcript, input.wake_word)) {
                 decision_path = "emergency_stop";
@@ -100,11 +105,17 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
         error = exception.what();
         std::cerr << "[处理错误] " << error << std::endl;
     }
-    auto result = voice_control::PlanResult(sequence, transcript, plan, success);
+    auto result = voice_control::PlanResult(sequence, simplified ? *simplified : transcript, plan, success);
     if (simplified) {
         result["normalized_transcript"] = *simplified;
+        if (*simplified != transcript) {
+            result["raw_transcript"] = transcript;
+        }
     }
     result["decision_path"] = decision_path;
+    if (rejection_reason) {
+        result["reason"] = rejection_reason;
+    }
     if (!error.empty()) {
         result["error"] = error;
         if (error == "empty_or_excessive_transcript") {

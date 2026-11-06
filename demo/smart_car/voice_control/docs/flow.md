@@ -114,8 +114,8 @@ sequenceDiagram
 | --- | --- | --- |
 | 音频入口 | 麦克风采样或音频文件 → 16 kHz 单声道 PCM。FILE 解码后的数据按块进入分句。 | [Linux 音频输入](../src/platform/linux/audio.hpp) |
 | Silero | 每次 512 个新采样点，带上历史上下文和循环状态 → 人声概率 → 根据尾静音及段长规则生成 PCM 语音段。 | [分句规则](../src/shared/speech_segmenter.hpp) · [audio、vad 配置](../config.example.json) |
-| Whisper | 语音段 → CPU 计算 Mel → BPU Encoder 和 Decoder → Token 序列 → 中文或英文转录。原始转录保留在结果的 `transcript`。 | [Whisper 实现](../src/platform/s100/whisper.hpp) |
-| 繁转简 | 中文原始转录 → 进程内 OpenCC → `normalized_transcript`。例如「閃電，往前走兩米」变成「闪电，往前走两米」。 | [简体转换](../src/platform/linux/simplified_chinese.hpp) |
+| Whisper | 语音段 → CPU 计算 Mel → BPU Encoder 和 Decoder → Token 序列 → 中文或英文转录。 | [Whisper 实现](../src/platform/s100/whisper.hpp) |
+| 繁转简 | 中文原始转录 → 进程内 OpenCC → 终端「转录」和 JSON `transcript`。例如「閃電，往前走兩米」变成「闪电，往前走两米」，不同的原文放在 `raw_transcript`。 | [简体转换](../src/platform/linux/simplified_chinese.hpp) |
 | 指令分流 | 转换后的文本 → 去掉前缀及分隔符 → 紧急停车直出，或把普通口令正文完整交给 DeepSeek。 | [动作、参数和媒体规则](../src/shared/command.hpp) |
 | DeepSeek | 普通口令正文 → 分类提示词 → 模型动作标签。默认直答由模板控制。 | [分类提示词](../src/shared/command.hpp) · [DeepSeek 接入](../src/platform/s100/deepseek.hpp) |
 | 参数校验 | 模型动作标签 + 原始口令正文 → 校验单位、唯一数量及默认值 → 可输出动作或 `unknown`。 | [参数规则](../src/shared/command.hpp) |

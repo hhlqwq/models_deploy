@@ -56,5 +56,19 @@ if [[ ! -x "$binary" || ! -r "$config" ]]; then
     exit 2
 fi
 
-# 地瓜运行库可能把诊断写到 stdout,这里仅将应用的 JSON 行留给结果管道.
-"$binary" "${args[@]}" | awk '/^\{/ { print; fflush(); next } { print > "/dev/stderr"; fflush("/dev/stderr") }'
+# 每次运行创建独立结果目录,同步保存终端输出和控制结果.
+mkdir -p "$root/results"
+run_dir="$(mktemp -d "$root/results/$mode-$(date +%Y%m%d-%H%M%S).XXXXXX")"
+log_file="$run_dir/terminal.log"
+json_file="$run_dir/commands.jsonl"
+: > "$json_file"
+printf '[日志] %s\n[结果] %s\n' "$log_file" "$json_file" | tee "$log_file" >&2
+
+# 地瓜运行库也可能写 stdout.先收集完整终端输出,再分流 JSON 和诊断.
+status=0
+"$binary" "${args[@]}" 2>&1 | tee -a "$log_file" | awk -v results="$json_file" '
+    /^\{/ { print; fflush(); print > results; fflush(results); next }
+    { print > "/dev/stderr"; fflush("/dev/stderr") }
+' || status=$?
+printf '[退出] 程序退出码=%s\n' "$status" | tee -a "$log_file" >&2
+exit "$status"

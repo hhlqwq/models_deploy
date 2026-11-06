@@ -23,7 +23,14 @@ cd /root/hailong.he/demo/voice_control
 | `short` | 一次加载模型，按文件名遍历 `examples/` 顶层音频，跳过 `old/` 和 `流式音频.m4a`。出错时继续检查其余文件。 | `source.file` 标明文件，最后汇总已处理、运行失败和输出条数；语义未识别通过每条 JSON 判断。 |
 | `replay` | `流式音频.m4a` 按实际采样节奏逐帧送入与 USB 麦克风相同的分句和推理队列，正常 EOF 补交末段、排空队列后退出。 | `source.sensor_id=audio_replay`，终端每 30 秒打印输入进度，末尾汇总队列和超长丢段。 |
 
-回放沿用 MIC 的「闪电」前缀规则；短文件允许省略前缀。两种验收入口都只输出 JSON，媒体结果显示 `playback.status=intent_only`。将命令末尾加 `> results/short.jsonl` 或 `> results/replay.jsonl` 即可保存结果，进度和诊断仍显示在终端。回放输入保持真实时间节奏，识别依旧是 Silero 分句后交给 Whisper。复合模式的 DeepSeek 语义准确率仍待验收。
+回放沿用 MIC 的「闪电」前缀规则，短文件允许省略前缀。两种验收入口的媒体结果均为 `playback.status=intent_only`。回放输入保持真实时间节奏，识别依旧是 Silero 分句后交给 Whisper。复合模式的 DeepSeek 语义准确率仍待验收。
+
+每次启动会在 `results/` 下创建独立的带时间目录，并在终端显示文件路径。
+
+- `terminal.log` 保存转录、诊断、JSON 结果和程序退出码。运行中可用 `tail -f` 查看这份日志。
+- `commands.jsonl` 只保存结果 JSON，与标准输出一致。全静音等零结果情况也会留下空的结果文件。
+
+以上自动保存由 `run.sh` 提供。直接运行二进制时，可以自行重定向标准输出和错误输出。
 
 ### 直接启动程序
 
@@ -122,8 +129,9 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「闪电」，例�
         "sensor_id": "audio_file",
         "pipeline_id": "whisper_tiny_deepseek_v1"
     },
-    "transcript": "請向前走",
+    "transcript": "请向前走",
     "normalized_transcript": "请向前走",
+    "raw_transcript": "請向前走",
     "command": "forward",
     "decision_path": "deepseek",
     "command_text": "前进",
@@ -146,7 +154,8 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「闪电」，例�
 
 - 用 `source.sensor_id` 区分 FILE 的 `audio_file` 和 MIC 的 `usb_microphone`。序号从每次进程启动的 1 开始，`timestamp_ms` 是 Unix 毫秒时间戳。
 - `decision_path` 标明本次路径，分别为 `deepseek`、`emergency_stop` 或 `not_classified`。
-- `transcript` 保留 Whisper 的原始转录。中文转录完成转换时，`normalized_transcript` 保存去除唤醒前缀之前的简体文本。若两者不同，终端会额外打印一行「简体转录」。
+- 中文转录转换成功后，终端「转录」和 JSON 的 `transcript` 都显示简体，`normalized_transcript` 保留为兼容字段。原始转录与简体不同的时候，JSON 另带 `raw_transcript`。
+- `reason=wake_word_missing` 表示 MIC 或回放没有匹配到唤醒前缀，`reason=empty_command` 表示没有命令正文。两者都未进入 LLM。例如「沙电阿」转成简体后仍是「沙电阿」，繁转简不会把它识别为「闪电」。
 - 文件输入的 `source.file` 记录原始文件名；离线文件和实时回放分别用 `audio_file` 和 `audio_replay` 表示来源。
 - 只有 `status=completed` 且 `recognized=true` 时可取用动作。空转录或超限转录为 `ignored`，模型错误为 `inference_error`。有错误详情时附加 `error` 字段。无有效语音时不输出结果。
 - `since_audio_end_ms` 从分句就绪计到 JSON 就绪前，包含队列等待和模型处理。VAD 推理累计耗时与尾静音音频时长分别记录，均在该边界之前。VAD 累计可包含上次结果之后的静音帧。未测阶段为 `null`。
@@ -206,6 +215,8 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「闪电」，例�
 FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。MIC 用采集线程和有界队列，队列满时丢弃新语音段并写日志，Ctrl+C 等待在途推理结束。超过单段长度上限的语音会丢弃，FILE 会报告超长段并返回失败。只有专用紧急口令「闪电停车」在转录后直接输出，仍经过分句与 Whisper。普通运动、停止和媒体口令均交给 DeepSeek 判意图，程序再校验标签与原文参数。模型逐段重置上下文。默认 `llm.thinking=false`，通过在已验证的旧 SDK 模板前缀预填空思考段实现直答。模板不匹配或模型重新生成思考标记时报告错误。可用 `llm.thinking=true` 对照原模板。[DeepSeek 模型说明](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B#usage-recommendations)
 
 ## 5. 验证记录与剩余工作
+
+日志和简体展示修正已部署到板端。FILE、MIC 交叉编译通过，板端用模拟程序核对了每次独立落盘、终端日志与结果 JSON 分流、简体展示和退出码。该检查未使用用户录音。
 
 简体中文阶段已更新板端 FILE 和 MIC 程序。两种模式交叉编译通过。板端 OpenCC 文本探针验证了「閃電，往前走兩米」「閃電停車」和「閃電，向左轉同時暫停音樂」，分别覆盖唤醒词、距离、紧急停车及复合参数匹配。此记录为文字链路验证，用户录音仍留待验收。
 
