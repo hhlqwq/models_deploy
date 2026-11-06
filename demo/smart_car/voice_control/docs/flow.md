@@ -37,7 +37,8 @@ flowchart LR
     Replay -->|"每 32 ms 输入一帧 PCM"| Vad
     File -->|"16 kHz 单声道 PCM"| Vad
     Vad -->|"完整语音段"| Asr
-    Asr -->|"转录文本"| Gate
+    Asr -->|"原始转录"| Text["OpenCC · 中文转简体"]
+    Text -->|"统一字形后的文本"| Gate
     Gate -->|"普通口令"| Llm
     Gate -->|"紧急停车或入口拒绝"| Json
     Llm -->|"动作标签或分组计划"| Validate
@@ -60,7 +61,8 @@ flowchart TD
     Whisper --> Valid{"转录文本有效？"}
     Whisper -->|"推理失败"| Error["输出 inference_error"]
     Valid -->|"空或超限"| Ignored["输出 ignored"]
-    Valid -->|"有效"| Wake{"MIC 前缀有效，且有命令正文？"}
+    Valid -->|"有效"| Simplify["中文转简体"]
+    Simplify --> Wake{"MIC 前缀有效，且有命令正文？"}
     Wake -->|"否"| Unknown["输出 unknown"]
     Wake -->|"是，或 FILE 有正文"| Emergency{"完整转录是闪电停车？"}
     Emergency -->|"是"| Stop["直接输出 stop"]
@@ -113,7 +115,8 @@ sequenceDiagram
 | 音频入口 | 麦克风采样或音频文件 → 16 kHz 单声道 PCM。FILE 解码后的数据按块进入分句。 | [Linux 音频输入](../src/platform/linux/audio.hpp) |
 | Silero | 每次 512 个新采样点，带上历史上下文和循环状态 → 人声概率 → 根据尾静音及段长规则生成 PCM 语音段。 | [分句规则](../src/shared/speech_segmenter.hpp) · [audio、vad 配置](../config.example.json) |
 | Whisper | 语音段 → CPU 计算 Mel → BPU Encoder 和 Decoder → Token 序列 → 中文或英文转录。原始转录保留在结果的 `transcript`。 | [Whisper 实现](../src/platform/s100/whisper.hpp) |
-| 指令分流 | 原始转录 → 去掉前缀及分隔符 → 紧急停车直出，或把普通口令正文完整交给 DeepSeek。 | [动作、参数和媒体规则](../src/shared/command.hpp) |
+| 繁转简 | 中文原始转录 → 进程内 OpenCC → `normalized_transcript`。例如「閃電，往前走兩米」变成「闪电，往前走两米」。 | [简体转换](../src/platform/linux/simplified_chinese.hpp) |
+| 指令分流 | 转换后的文本 → 去掉前缀及分隔符 → 紧急停车直出，或把普通口令正文完整交给 DeepSeek。 | [动作、参数和媒体规则](../src/shared/command.hpp) |
 | DeepSeek | 普通口令正文 → 分类提示词 → 模型动作标签。默认直答由模板控制。 | [分类提示词](../src/shared/command.hpp) · [DeepSeek 接入](../src/platform/s100/deepseek.hpp) |
 | 参数校验 | 模型动作标签 + 原始口令正文 → 校验单位、唯一数量及默认值 → 可输出动作或 `unknown`。 | [参数规则](../src/shared/command.hpp) |
 | 试验性复合计划 | 同一语音段 → 模型引用原文并拆动作 → 程序校验各步骤和并行关系 → 一条 `voice_command_plan`。发送后继续收音。 | [计划解析](../src/shared/command_plan.hpp) · [启用方式及协议](../README.md#试验性复合指令) |

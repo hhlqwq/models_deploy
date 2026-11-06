@@ -20,6 +20,7 @@
 
 #include "platform/linux/application.hpp"
 #include "platform/linux/audio.hpp"
+#include "platform/linux/simplified_chinese.hpp"
 #ifdef VOICE_INPUT_MIC
 #include "platform/linux/mpv_player.hpp"
 #endif
@@ -34,6 +35,7 @@ struct CommandInput {
     std::string wake_word;
     bool require_wake_word;
     bool enable_command_plan;
+    const voice_control::SimplifiedChinese* normalizer;
 #ifdef VOICE_INPUT_MIC
     const voice_control::MpvPlayer* player;
 #endif
@@ -50,6 +52,7 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
     voice_control::DeepSeek::Timing llm_timing;
     voice_control::CommandPlan plan;
     std::string transcript;
+    std::optional<std::string> simplified;
     const char* decision_path = "not_classified";
     bool success = false;
     std::string error;
@@ -59,11 +62,18 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
         if (transcript.empty() || transcript.size() > 2048) {
             error = "empty_or_excessive_transcript";
         } else {
+            if (input.normalizer) {
+                simplified = input.normalizer->Convert(transcript);
+                if (*simplified != transcript) {
+                    std::cerr << "[简体转录] " << *simplified << std::endl;
+                }
+            }
+            const auto& command_transcript = simplified ? *simplified : transcript;
             const auto text = voice_control::NormalizeCommand(
-                transcript, input.wake_word, input.require_wake_word);
+                command_transcript, input.wake_word, input.require_wake_word);
             if (text.empty()) {
                 success = true;
-            } else if (voice_control::IsEmergencyStop(transcript, input.wake_word)) {
+            } else if (voice_control::IsEmergencyStop(command_transcript, input.wake_word)) {
                 decision_path = "emergency_stop";
                 plan = {{voice_control::MotionCommands().at("停止")}};
                 success = true;
@@ -91,6 +101,9 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
         std::cerr << "[处理错误] " << error << std::endl;
     }
     auto result = voice_control::PlanResult(sequence, transcript, plan, success);
+    if (simplified) {
+        result["normalized_transcript"] = *simplified;
+    }
     result["decision_path"] = decision_path;
     if (!error.empty()) {
         result["error"] = error;
@@ -327,7 +340,14 @@ int voice_control::RunApplication(int argc, char** argv) {
         if (command_mode != "single" && command_mode != "plan") {
             throw std::runtime_error("speech.command_mode 必须为 single 或 plan.");
         }
-        const auto wake_word = voice_control::Trim(speech.value("wake_word", std::string("闪电")));
+        auto wake_word = voice_control::Trim(speech.value("wake_word", std::string("闪电")));
+        const auto& asr = config.at("whisper");
+        const auto language = asr.value("language", std::string("zh"));
+        std::optional<voice_control::SimplifiedChinese> normalizer;
+        if (language == "zh") {
+            normalizer.emplace();
+            wake_word = normalizer->Convert(wake_word);
+        }
         const auto config_root = std::filesystem::absolute(argv[1]).parent_path();
         // 本地资源路径相对配置文件解析,从任意工作目录启动均一致.
         const auto resource_path = [&](const nlohmann::json& value) {
@@ -340,12 +360,14 @@ int voice_control::RunApplication(int argc, char** argv) {
             player.emplace(config.value("media", nlohmann::json::object()), config_root);
         }
         const CommandInput input{wake_word, true, force_plan || command_mode == "plan",
+                                 normalizer ? &*normalizer : nullptr,
                                  player ? &*player : nullptr};
         if (input.wake_word.empty()) {
             throw std::runtime_error("MIC 模式需要配置非空的 speech.wake_word.");
         }
 #else
-        const CommandInput input{wake_word, false, force_plan || command_mode == "plan"};
+        const CommandInput input{wake_word, false, force_plan || command_mode == "plan",
+                                 normalizer ? &*normalizer : nullptr};
 #endif
         std::cerr << "[模式] 指令=" << (input.enable_command_plan ? "plan" : "single") << std::endl;
         const auto& vad = config.at("vad");
@@ -356,8 +378,7 @@ int voice_control::RunApplication(int argc, char** argv) {
         voice_control::DeepSeek model(resource_path(llm.at("model")), resource_path(llm.at("tokenizer")),
                                       resource_path(llm.at("chat_template")), llm.value("print_raw", false),
                                       llm.value("thinking", false));
-        const auto& asr = config.at("whisper");
-        voice_control::Whisper whisper(resource_path(asr.at("models")), asr.value("language", "zh"));
+        voice_control::Whisper whisper(resource_path(asr.at("models")), language);
 #ifdef VOICE_INPUT_MIC
         const auto capacity = audio_options.value("queue_capacity", 2);
         const auto run_live = [&](auto capture, const std::string& source_file) {

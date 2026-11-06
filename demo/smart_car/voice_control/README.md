@@ -1,10 +1,10 @@
 # S100 语音控制 Demo
 
-C++ 应用在 S100 上运行。FILE 处理完输入文件后退出，MIC 持续监听到 Ctrl+C。两者共用 Silero VAD 和 Whisper tiny。普通指令转录交给 DeepSeek 分类，程序校验参数，专用紧急停车直接输出，再输出小车控制 JSON 或独立的媒体意图 JSON，可作为 ROS2 String 的载荷。
+C++ 应用在 S100 上运行。FILE 处理完输入文件后退出，MIC 持续监听到 Ctrl+C。两者共用 Silero VAD 和 Whisper tiny。中文转录统一为简体后，普通指令交给 DeepSeek 分类，程序校验参数，专用紧急停车直接输出。结果以小车控制 JSON 或媒体意图 JSON 表示，可作为 ROS2 String 的载荷。
 
 **先看业务**：[架构图、流程图与数据示例](docs/flow.md)。这里可以追踪一条口令经过哪些模块、何时调用 DeepSeek，以及需求变更会影响哪里。
 
-**进度**：普通口令由 DeepSeek 判断，专用紧急停车直出。已加入试验性复合指令模式和整份计划校验。默认沿用单动作模式，真人录音和复合语义准确率待验证。MIC 仍采用 Silero 分句后交给 Whisper 的方式，流式转录和流式停车待接入。
+**进度**：已接入中文转录繁转简。普通口令由 DeepSeek 判断，专用紧急停车直出。已加入试验性复合指令模式和整份计划校验。下一阶段处理 LLM 耗时，语音前处理和流式转录的提速放在后面。
 
 ## 1. 在已部署的板端运行
 
@@ -43,6 +43,8 @@ arecord -l
 FILE 需要板端 PATH 中有 `ffmpeg`，支持其可解码的音频，程序分块转换为 16 kHz 单声道 PCM。纯静音时只有诊断日志。可以在 FILE 命令尾部追加文件路径，程序按参数顺序处理。MIC 的 `audio.device` 需与 `arecord -l` 查到的设备一致，例如 `plughw:1,0`。中文使用 `whisper.language=zh`，英文样例用 `en`。
 
 MIC 的语音指令使用 `speech.wake_word` 前缀，默认「闪电」，例如「闪电，后退半米」「闪电停车」「闪电，播放第二首」。已有配置里若显式写了其他词，以该配置为准。目前在 Whisper 转录后检查前缀，一句话包含一条命令。FILE 可使用有前缀或无前缀的录音，均只输出 JSON。
+
+中文模式在启动时加载板端 `libopencc.so.1.1` 和 `/usr/share/opencc/t2s.json`。转换在 C++ 进程内完成，唤醒词、紧急停车、LLM 输入和参数校验使用同一份简体文本。运行库或词典缺失时，程序启动会给出错误。 [OpenCC t2s 配置](https://github.com/BYVoid/OpenCC/blob/ver.1.1.3/data/config/t2s.json)
 
 程序将结果逐行写到 stdout，应用日志写到 stderr。需要结果文件时，在启动命令后加 `> results/run.jsonl`，终端仍可查看转录、进度和错误。
 
@@ -120,7 +122,8 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「闪电」，例�
         "sensor_id": "audio_file",
         "pipeline_id": "whisper_tiny_deepseek_v1"
     },
-    "transcript": "请向前走",
+    "transcript": "請向前走",
+    "normalized_transcript": "请向前走",
     "command": "forward",
     "decision_path": "deepseek",
     "command_text": "前进",
@@ -143,6 +146,7 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「闪电」，例�
 
 - 用 `source.sensor_id` 区分 FILE 的 `audio_file` 和 MIC 的 `usb_microphone`。序号从每次进程启动的 1 开始，`timestamp_ms` 是 Unix 毫秒时间戳。
 - `decision_path` 标明本次路径，分别为 `deepseek`、`emergency_stop` 或 `not_classified`。
+- `transcript` 保留 Whisper 的原始转录。中文转录完成转换时，`normalized_transcript` 保存去除唤醒前缀之前的简体文本。若两者不同，终端会额外打印一行「简体转录」。
 - 文件输入的 `source.file` 记录原始文件名；离线文件和实时回放分别用 `audio_file` 和 `audio_replay` 表示来源。
 - 只有 `status=completed` 且 `recognized=true` 时可取用动作。空转录或超限转录为 `ignored`，模型错误为 `inference_error`。有错误详情时附加 `error` 字段。无有效语音时不输出结果。
 - `since_audio_end_ms` 从分句就绪计到 JSON 就绪前，包含队列等待和模型处理。VAD 推理累计耗时与尾静音音频时长分别记录，均在该边界之前。VAD 累计可包含上次结果之后的静音帧。未测阶段为 `null`。
@@ -202,6 +206,8 @@ MIC 的语音指令使用 `speech.wake_word` 前缀，默认「闪电」，例�
 FILE 同步逐段处理，保留顺序并在文件结束时处理最后一段。MIC 用采集线程和有界队列，队列满时丢弃新语音段并写日志，Ctrl+C 等待在途推理结束。超过单段长度上限的语音会丢弃，FILE 会报告超长段并返回失败。只有专用紧急口令「闪电停车」在转录后直接输出，仍经过分句与 Whisper。普通运动、停止和媒体口令均交给 DeepSeek 判意图，程序再校验标签与原文参数。模型逐段重置上下文。默认 `llm.thinking=false`，通过在已验证的旧 SDK 模板前缀预填空思考段实现直答。模板不匹配或模型重新生成思考标记时报告错误。可用 `llm.thinking=true` 对照原模板。[DeepSeek 模型说明](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B#usage-recommendations)
 
 ## 5. 验证记录与剩余工作
+
+简体中文阶段已更新板端 FILE 和 MIC 程序。两种模式交叉编译通过。板端 OpenCC 文本探针验证了「閃電，往前走兩米」「閃電停車」和「閃電，向左轉同時暫停音樂」，分别覆盖唤醒词、距离、紧急停车及复合参数匹配。此记录为文字链路验证，用户录音仍留待验收。
 
 中文验收入口已部署到板端。两个程序通过 S100 交叉编译，板端短检查覆盖中文及带空格的文件名筛选、跳过历史归档、遇到缺失文件后继续处理，以及 0.24 秒临时静音按节奏回放后正常退出。用户提供的 15 段短录音和长录音留给正式验收。
 
