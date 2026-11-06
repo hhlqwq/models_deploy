@@ -45,24 +45,24 @@ if [[ "$platform" == linux-amd64 ]]; then
   set -u
   "$root/scripts/check_sdk.sh"
 else
-  # 使用外部提供的 G720 SDK 和模型目录.
-  : "${G720_NEURON_INCLUDE_DIR:?请指定包含 neuron/api/RuntimeAPI.h 的 MT8189 SDK include 目录}"
-  : "${G720_NEURON_LIBRARY:?请指定与板端匹配的 AArch64 Neuron Runtime 链接库}"
-  G720_MODEL_DIR="${G720_MODEL_DIR:-$root/models/g720}"
+  # G720 C++ 依赖统一放在 Demo 自己的 ARM64 SDK 目录.
+  sdk_dir="${G720_SDK_DIR:-$root/dep/linux-arm64}"
+  if [[ -z "${G720_TOOLCHAIN_FILE:-}" ]]; then
+    G720_TOOLCHAIN_FILE="$root/cmake/mtk-g720-gnu-toolchain.cmake"
+    cmake_args+=("-DG720_BOARD_OPENCV=ON")
+    build_dir="$build_dir/sdk"
+  fi
   cmake_args+=(
-    "-DG720_NEURON_INCLUDE_DIR=$G720_NEURON_INCLUDE_DIR"
-    "-DG720_NEURON_LIBRARY=$G720_NEURON_LIBRARY"
-    "-DG720_MODEL_DIR=$G720_MODEL_DIR"
-    "-DG720_ENABLE_ROS2=${G720_ENABLE_ROS2:-ON}"
+    "-DCMAKE_TOOLCHAIN_FILE=$G720_TOOLCHAIN_FILE"
+    "-DG720_SDK_DIR=$sdk_dir"
+    "-DORBBEC_SDK_ROOT=${G720_ORBBEC_SDK_ROOT:-$sdk_dir/orbbec_sdk}"
+    "-DG720_NEURON_INCLUDE_DIR=${G720_NEURON_INCLUDE_DIR:-$sdk_dir/neuron/include}"
+    "-DG720_NEURON_LIBRARY=${G720_NEURON_LIBRARY:-$sdk_dir/board-libs/libneuronusdk_runtime.mtk.so.8}"
+    "-DG720_MODEL_DIR=${G720_MODEL_DIR:-$root/models/g720}"
+    "-DG720_ENABLE_ROS2=${G720_ENABLE_ROS2:-OFF}"
     "-DCMAKE_BUILD_TYPE=Release"
     "-DBUILD_TESTING=OFF"
   )
-  if [[ -n "${G720_TOOLCHAIN_FILE:-}" ]]; then
-    cmake_args+=("-DCMAKE_TOOLCHAIN_FILE=$G720_TOOLCHAIN_FILE")
-  fi
-  if [[ -n "${G720_ORBBEC_SDK_ROOT:-}" ]]; then
-    cmake_args+=("-DORBBEC_SDK_ROOT=$G720_ORBBEC_SDK_ROOT")
-  fi
 fi
 
 if [[ "$platform" == linux-amd64 ]]; then
