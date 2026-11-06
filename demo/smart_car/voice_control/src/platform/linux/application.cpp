@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <sys/resource.h>
@@ -34,7 +35,7 @@ struct CommandInput {
     bool require_wake_word;
     bool enable_command_plan;
 #ifdef VOICE_INPUT_MIC
-    const voice_control::MpvPlayer& player;
+    const voice_control::MpvPlayer* player;
 #endif
 };
 
@@ -43,7 +44,7 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
                   voice_control::DeepSeek& model, std::uint64_t sequence,
                   std::chrono::steady_clock::time_point ended,
                   const voice_control::SpeechSegmenter::Timing& vad_timing,
-                  const CommandInput& input) {
+                  const CommandInput& input, const std::string& source_file) {
     const auto started = std::chrono::steady_clock::now();
     voice_control::Whisper::Timing asr_timing;
     voice_control::DeepSeek::Timing llm_timing;
@@ -98,16 +99,21 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
         }
     }
 #ifdef VOICE_INPUT_MIC
-    result["source"]["sensor_id"] = "usb_microphone";
-    if (success && result["message_type"] == "voice_media_intent") {
-        result["playback"] = input.player.Execute(plan.front().front());
-    }
+    result["source"]["sensor_id"] = source_file.empty() ? "usb_microphone" : "audio_replay";
 #else
     result["source"]["sensor_id"] = "audio_file";
+#endif
+    if (!source_file.empty()) {
+        result["source"]["file"] = source_file;
+    }
     if (success && result["message_type"] == "voice_media_intent") {
         result["playback"] = {{"status", "intent_only"}};
-    }
+#ifdef VOICE_INPUT_MIC
+        if (input.player) {
+            result["playback"] = input.player->Execute(plan.front().front());
+        }
 #endif
+    }
     // 缺失阶段输出 null,避免把未执行或未完成的计时写为零.
     const auto measured = [](double value) -> nlohmann::json {
         return value < 0 ? nlohmann::json(nullptr) : nlohmann::json(value);
@@ -130,12 +136,13 @@ bool ProcessAudio(const std::vector<float>& audio, voice_control::Whisper& whisp
 }
 
 #ifdef VOICE_INPUT_MIC
-// 持续采集,通过有界队列将分句和模型推理解耦.
-bool RunMicrophone(voice_control::Microphone& microphone,
-                   voice_control::SpeechSegmenter& segmenter,
-                   voice_control::Whisper& whisper, voice_control::DeepSeek& model,
-                   int capacity, const CommandInput& input) {
+// 两种实时音频来源共用有界队列.文件回放在正常结束时补交尾段并排空队列.
+template <typename CaptureFrames>
+bool RunLive(CaptureFrames capture_frames, voice_control::SpeechSegmenter& segmenter,
+             voice_control::Whisper& whisper, voice_control::DeepSeek& model,
+             int capacity, const CommandInput& input, const std::string& source_file) {
     std::uint64_t sequence = 0;
+    std::size_t queue_drops = 0;
     bool all_processed = true;
     struct Utterance {
         std::vector<float> audio;
@@ -150,24 +157,37 @@ bool RunMicrophone(voice_control::Microphone& microphone,
     if (capacity < 1 || capacity > 8) {
         throw std::runtime_error("queue_capacity 必须在 1 到 8 之间.");
     }
-    // 采集线程不调用模型,有界队列满时丢弃新语句并提示.
+    // 采集线程不调用模型.正常输入队列满时丢弃新语句,回放 EOF 尾段等待空位.
     std::thread capture([&]() {
         try {
-            std::vector<float> frame;
-            std::cerr << "[监听] USB 麦克风已就绪;Ctrl+C 后等待在途推理完成." << std::endl;
-            while (!voice_control::stop_requested && microphone.Read(frame)) {
+            const auto submit = [&](std::vector<float> utterance, bool final_frame) {
+                const auto ended = std::chrono::steady_clock::now();
+                const auto timing = segmenter.TakeTiming();
+                std::unique_lock<std::mutex> lock(mutex);
+                const auto full = [&]() { return queue.size() >= static_cast<std::size_t>(capacity); };
+                while (final_frame && full() && !voice_control::stop_requested) {
+                    ready.wait_for(lock, std::chrono::milliseconds(100));
+                }
+                if (voice_control::stop_requested) {
+                    return;
+                }
+                if (full()) {
+                    ++queue_drops;
+                    std::cerr << "[丢弃] 模型繁忙,语句队列已满." << std::endl;
+                    return;
+                }
+                queue.push_back({std::move(utterance), ended, timing});
+                ready.notify_one();
+            };
+            capture_frames([&](const std::vector<float>& frame) {
                 std::vector<float> utterance;
                 if (segmenter.Feed(frame, utterance)) {
-                    const auto ended = std::chrono::steady_clock::now();
-                    const auto timing = segmenter.TakeTiming();
-                    std::lock_guard<std::mutex> lock(mutex);
-                    if (queue.size() >= static_cast<std::size_t>(capacity)) {
-                        std::cerr << "[丢弃] 模型繁忙,语句队列已满." << std::endl;
-                    } else {
-                        queue.push_back({std::move(utterance), ended, timing});
-                        ready.notify_one();
-                    }
+                    submit(std::move(utterance), false);
                 }
+            });
+            std::vector<float> tail;
+            if (!source_file.empty() && !voice_control::stop_requested && segmenter.Finish(tail)) {
+                submit(std::move(tail), true);
             }
         } catch (...) {
             std::lock_guard<std::mutex> lock(mutex);
@@ -196,9 +216,10 @@ bool RunMicrophone(voice_control::Microphone& microphone,
                 }
                 utterance = std::move(queue.front());
                 queue.pop_front();
+                ready.notify_all();
             }
             all_processed = ProcessAudio(utterance.audio, whisper, model, ++sequence,
-                utterance.ended, utterance.vad_timing, input) && all_processed;
+                utterance.ended, utterance.vad_timing, input, source_file) && all_processed;
         }
     } catch (...) {
         voice_control::stop_requested = 1;
@@ -207,48 +228,67 @@ bool RunMicrophone(voice_control::Microphone& microphone,
     }
     voice_control::stop_requested = 1;
     capture.join();
-    return all_processed;
+    std::cerr << "[实时输入汇总] 输出=" << sequence << ",队列丢段=" << queue_drops
+              << ",超长丢段=" << segmenter.Dropped() << std::endl;
+    return all_processed && (source_file.empty() || (queue_drops == 0 && segmenter.Dropped() == 0));
 }
 #else
 // 按文件顺序解码和分句,处理完末尾语音后退出.
-bool RunFiles(int argc, char** argv, voice_control::SpeechSegmenter& segmenter,
+bool RunFiles(const std::vector<std::string>& files, voice_control::SpeechSegmenter& segmenter,
               voice_control::Whisper& whisper, voice_control::DeepSeek& model,
               const CommandInput& input) {
     std::uint64_t sequence = 0;
-    bool all_processed = true;
+    std::size_t processed = 0;
+    std::size_t failed = 0;
     std::cerr << "[就绪] FILE 模式,本地音频 -> Silero -> Whisper tiny -> DeepSeek -> 控制 JSON." << std::endl;
-    for (int i = 2; i < argc && !voice_control::stop_requested; ++i) {
-        std::cerr << "[音频] " << i - 1 << "/" << argc - 2 << ": " << argv[i] << std::endl;
+    for (const auto& file : files) {
+        if (voice_control::stop_requested) {
+            break;
+        }
+        ++processed;
+        std::cerr << "[音频] " << processed << "/" << files.size() << ": " << file << std::endl;
         segmenter.Reset();
         const auto before = sequence;
+        const auto source_file = std::filesystem::path(file).filename().string();
+        bool file_ok = true;
         std::vector<float> utterance;
         // 离线模式逐段同步处理,解码等候推理,保持顺序且不丢有效输入.
         const auto process = [&]() {
             const auto ended = std::chrono::steady_clock::now();
-            all_processed = ProcessAudio(utterance, whisper, model, ++sequence,
-                ended, segmenter.TakeTiming(), input) && all_processed;
+            file_ok = ProcessAudio(utterance, whisper, model, ++sequence,
+                ended, segmenter.TakeTiming(), input, source_file) && file_ok;
             utterance.clear();
         };
-        voice_control::ReadAudioFile(argv[i], [&](const std::vector<float>& frame) {
-            if (segmenter.Feed(frame, utterance)) {
+        try {
+            voice_control::ReadAudioFile(file, [&](const std::vector<float>& frame) {
+                if (segmenter.Feed(frame, utterance)) {
+                    process();
+                }
+            });
+            if (voice_control::stop_requested) {
+                break;
+            }
+            if (segmenter.Finish(utterance)) {
                 process();
             }
-        });
-        if (voice_control::stop_requested) {
-            break;
-        }
-        if (segmenter.Finish(utterance)) {
-            process();
+        } catch (const std::exception& error) {
+            file_ok = false;
+            std::cerr << "[文件错误] " << file << ": " << error.what() << std::endl;
         }
         if (segmenter.Dropped()) {
-            all_processed = false;
+            file_ok = false;
             std::cerr << "[文件] 超长语音段: " << segmenter.Dropped() << std::endl;
         }
-        if (sequence == before && segmenter.Dropped() == 0) {
+        if (file_ok && sequence == before) {
             std::cerr << "[文件] 未检测到有效语音." << std::endl;
         }
+        if (!file_ok) {
+            ++failed;
+        }
     }
-    return all_processed;
+    std::cerr << "[文件汇总] 已处理=" << processed << "/" << files.size()
+              << ",失败=" << failed << ",输出=" << sequence << std::endl;
+    return failed == 0;
 }
 #endif
 
@@ -257,16 +297,22 @@ bool RunFiles(int argc, char** argv, voice_control::SpeechSegmenter& segmenter,
 // 编译时选择文件或麦克风输入,两种方式复用同一模型和 JSON 协议.
 int voice_control::RunApplication(int argc, char** argv) {
     try {
+        const bool show_help = argc == 2 && std::string(argv[1]) == "--help";
+        const bool force_plan = argc > 2 && std::string(argv[2]) == "--plan";
+        const int first_input = force_plan ? 3 : 2;
 #ifdef VOICE_INPUT_MIC
-        if (argc != 2) {
-            std::cerr << "用法(MIC): voice_control_mic <config.json>\n";
-            return 2;
+        const bool replay = argc == first_input + 2 && std::string(argv[first_input]) == "--replay";
+        if (show_help || (argc != first_input && !replay)) {
+            std::cerr << "用法(MIC): voice_control_mic <config.json> [--plan] [--replay <audio_file>]\n";
+            return show_help ? 0 : 2;
         }
+        const std::string replay_file = replay ? argv[first_input + 1] : "";
 #else
-        if (argc < 3) {
-            std::cerr << "用法(FILE): voice_control_file <config.json> <audio_file>...\n";
-            return 2;
+        if (show_help || argc <= first_input) {
+            std::cerr << "用法(FILE): voice_control_file <config.json> [--plan] <audio_file>...\n";
+            return show_help ? 0 : 2;
         }
+        const std::vector<std::string> files(argv + first_input, argv + argc);
 #endif
         std::signal(SIGINT, voice_control::HandleSignal);
         std::signal(SIGTERM, voice_control::HandleSignal);
@@ -289,15 +335,19 @@ int voice_control::RunApplication(int argc, char** argv) {
             return (path.is_absolute() ? path : config_root / path).lexically_normal().string();
         };
 #ifdef VOICE_INPUT_MIC
-        const voice_control::MpvPlayer player(config.value("media", nlohmann::json::object()), config_root);
-        const CommandInput input{wake_word, true, command_mode == "plan", player};
+        std::optional<voice_control::MpvPlayer> player;
+        if (!replay) {
+            player.emplace(config.value("media", nlohmann::json::object()), config_root);
+        }
+        const CommandInput input{wake_word, true, force_plan || command_mode == "plan",
+                                 player ? &*player : nullptr};
         if (input.wake_word.empty()) {
             throw std::runtime_error("MIC 模式需要配置非空的 speech.wake_word.");
         }
-        voice_control::Microphone microphone(audio_options.at("device"));
 #else
-        const CommandInput input{wake_word, false, command_mode == "plan"};
+        const CommandInput input{wake_word, false, force_plan || command_mode == "plan"};
 #endif
+        std::cerr << "[模式] 指令=" << (input.enable_command_plan ? "plan" : "single") << std::endl;
         const auto& vad = config.at("vad");
         voice_control::SpeechSegmenter segmenter(resource_path(vad.at("model")),
             vad.value("threshold", 0.5F), audio_options.value("end_silence_ms", 700),
@@ -309,10 +359,28 @@ int voice_control::RunApplication(int argc, char** argv) {
         const auto& asr = config.at("whisper");
         voice_control::Whisper whisper(resource_path(asr.at("models")), asr.value("language", "zh"));
 #ifdef VOICE_INPUT_MIC
-        const bool all_processed = RunMicrophone(
-            microphone, segmenter, whisper, model, audio_options.value("queue_capacity", 2), input);
+        const auto capacity = audio_options.value("queue_capacity", 2);
+        const auto run_live = [&](auto capture, const std::string& source_file) {
+            return RunLive(capture, segmenter, whisper, model, capacity, input, source_file);
+        };
+        bool all_processed;
+        if (replay) {
+            std::cerr << "[回放] 按实时采样节奏输入: " << replay_file << std::endl;
+            all_processed = run_live([&](const auto& consume) {
+                voice_control::ReplayAudioFile(replay_file, consume);
+            }, std::filesystem::path(replay_file).filename().string());
+        } else {
+            voice_control::Microphone microphone(audio_options.at("device"));
+            std::cerr << "[监听] USB 麦克风已就绪;Ctrl+C 后等待在途推理完成." << std::endl;
+            all_processed = run_live([&](const auto& consume) {
+                std::vector<float> frame;
+                while (!voice_control::stop_requested && microphone.Read(frame)) {
+                    consume(frame);
+                }
+            }, "");
+        }
 #else
-        const bool all_processed = RunFiles(argc, argv, segmenter, whisper, model, input);
+        const bool all_processed = RunFiles(files, segmenter, whisper, model, input);
 #endif
         rusage usage{};
         if (getrusage(RUSAGE_SELF, &usage) == 0) {
